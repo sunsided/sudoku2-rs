@@ -258,7 +258,7 @@ fn print_cell_groups(groups: &CellGroups) {
                 print!("│ ");
             }
 
-            let group = groups.get_at_xy(x, y).expect("invalid groups");
+            let group = groups.get_groups_at_xy(x, y).expect("invalid groups");
             let group = group.first().unwrap();
             print!(
                 "{} ",

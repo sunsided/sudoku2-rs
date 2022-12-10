@@ -102,29 +102,59 @@ impl CellGroups {
     }
 
     #[inline]
-    pub fn get_at_xy(&self, x: u8, y: u8) -> Result<Vec<CellGroup>, NoMatchingGroup> {
+    pub fn get_at_xy(&self, x: u8, y: u8) -> Result<IndexBitSet, NoMatchingGroup> {
         debug_assert!(x <= 9 && y <= 9);
         self.get_at_coord(Coordinate::new(x, y))
     }
 
     #[inline]
-    pub fn get_at_coord(&self, coord: Coordinate) -> Result<Vec<CellGroup>, NoMatchingGroup> {
+    pub fn get_at_coord(&self, coord: Coordinate) -> Result<IndexBitSet, NoMatchingGroup> {
         self.get_at_index(coord.into())
     }
 
-    pub fn get_at_index(&self, index: Index) -> Result<Vec<CellGroup>, NoMatchingGroup> {
-        let mut groups = Vec::default();
+    pub fn get_at_index(&self, index: Index) -> Result<IndexBitSet, NoMatchingGroup> {
+        let mut set = IndexBitSet::empty();
 
         for group in self.groups.iter() {
             if group.contains(index) {
-                groups.push(group.clone());
+                set.union(&group.indexes);
             }
         }
 
-        if groups.is_empty() {
+        if set.is_empty() {
             Err(NoMatchingGroup {})
         } else {
-            Ok(groups)
+            Ok(set)
+        }
+    }
+
+    #[inline]
+    pub fn get_groups_at_xy(&self, x: u8, y: u8) -> Result<Vec<CellGroup>, NoMatchingGroup> {
+        debug_assert!(x <= 9 && y <= 9);
+        self.get_groups_at_coord(Coordinate::new(x, y))
+    }
+
+    #[inline]
+    pub fn get_groups_at_coord(
+        &self,
+        coord: Coordinate,
+    ) -> Result<Vec<CellGroup>, NoMatchingGroup> {
+        self.get_groups_at_index(coord.into())
+    }
+
+    pub fn get_groups_at_index(&self, index: Index) -> Result<Vec<CellGroup>, NoMatchingGroup> {
+        let mut set = Vec::default();
+
+        for group in self.groups.iter() {
+            if group.contains(index) {
+                set.push(group.clone());
+            }
+        }
+
+        if set.is_empty() {
+            Err(NoMatchingGroup {})
+        } else {
+            Ok(set)
         }
     }
 

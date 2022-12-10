@@ -79,23 +79,21 @@ impl DefaultSolver {
         for i in 0..81 {
             let mut group_size = 0;
             let mut group_smallest = SmallestIndex::default();
-            for group in self.groups.get_at_index(Index::new(i)).iter().flatten() {
-                for index in group.iter_indexes() {
-                    let index_size = state.get_at_index(index).len();
+            for index in self.groups.get_at_index(Index::new(i)).unwrap().iter() {
+                let index_size = state.get_at_index(index).len();
 
-                    // Ignore solved or invalid cells.
-                    if index_size <= 1 {
-                        continue;
-                    }
+                // Ignore solved or invalid cells.
+                if index_size <= 1 {
+                    continue;
+                }
 
-                    // Accumulate the group size and keep track of the smallest index
-                    // within that group.
-                    group_size += index_size;
-                    if index_size < group_smallest.size {
-                        group_smallest = SmallestIndex {
-                            index,
-                            size: index_size,
-                        }
+                // Accumulate the group size and keep track of the smallest index
+                // within that group.
+                group_size += index_size;
+                if index_size < group_smallest.size {
+                    group_smallest = SmallestIndex {
+                        index,
+                        size: index_size,
                     }
                 }
             }

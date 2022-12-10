@@ -61,17 +61,15 @@ impl GameState {
             .expect("group does not exist at index");
 
         // Propagate changes through peers.
-        for group in groups.into_iter() {
-            for peer_index in group.iter_indexes() {
-                if index == peer_index {
-                    continue;
-                }
-
-                let peer = self.cell_at_index(peer_index);
-                let mut cell = peer.get();
-                cell.remove(value);
-                peer.set(cell);
+        for peer_index in groups.iter() {
+            if index == peer_index {
+                continue;
             }
+
+            let peer = self.cell_at_index(peer_index);
+            let mut cell = peer.get();
+            cell.remove(value);
+            peer.set(cell);
         }
 
         self
@@ -157,13 +155,11 @@ impl GameState {
             let groups = groups
                 .get_at_index(index)
                 .expect("no groups found for specified index");
-            for group in groups.into_iter() {
-                for peer_index in group.iter_indexes().filter(|x| *x > index) {
-                    let peer_cell = self.get_at_index(peer_index);
-                    let peer_value = peer_cell.iter_candidates().next().unwrap();
-                    if peer_value == value {
-                        return false;
-                    }
+            for peer_index in groups.iter().filter(|x| *x > index) {
+                let peer_cell = self.get_at_index(peer_index);
+                let peer_value = peer_cell.iter_candidates().next().unwrap();
+                if peer_value == value {
+                    return false;
                 }
             }
         }
@@ -197,31 +193,29 @@ impl GameState {
             let mut seen_indexes = IndexBitSet::empty().with_index(index_under_test);
 
             let groups = groups.get_at_index(index_under_test).unwrap();
-            for group in groups.into_iter() {
-                for index in group.iter_indexes() {
-                    // Only process the indexes once.
-                    if !seen_indexes.try_insert(index) {
-                        continue;
-                    }
+            for index in groups.iter() {
+                // Only process the indexes once.
+                if !seen_indexes.try_insert(index) {
+                    continue;
+                }
 
-                    let cell = self.get_at_index(index);
+                let cell = self.get_at_index(index);
 
-                    // Consider only cells with exactly one value.
-                    // Zero-candidate cells are already ruled out.
-                    if !cell.is_solved() {
-                        continue;
-                    }
+                // Consider only cells with exactly one value.
+                // Zero-candidate cells are already ruled out.
+                if !cell.is_solved() {
+                    continue;
+                }
 
-                    let cell_set = cell.as_bitset();
-                    if cell_under_test.contains_set(cell_set) {
-                        /*
-                        eprintln!(
-                            "index under test: {:?}, current index {:?}'s [{:?}] is in [{:?}]",
-                            index_under_test, index, cell_set, cell_under_test
-                        );
-                        */
-                        return false;
-                    }
+                let cell_set = cell.as_bitset();
+                if cell_under_test.contains_set(cell_set) {
+                    /*
+                    eprintln!(
+                        "index under test: {:?}, current index {:?}'s [{:?}] is in [{:?}]",
+                        index_under_test, index, cell_set, cell_under_test
+                    );
+                    */
+                    return false;
                 }
             }
         }
