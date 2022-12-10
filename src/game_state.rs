@@ -2,7 +2,7 @@ use crate::cell_group::CellGroups;
 use crate::game_cell::GameCell;
 use crate::index::{Index, IndexBitSet};
 use crate::prelude::Coordinate;
-use crate::value::{Value, ValueBitSet};
+use crate::value::Value;
 use std::cell::Cell;
 use std::mem::MaybeUninit;
 
@@ -98,30 +98,6 @@ impl GameState {
         self
     }
 
-    /// This method simply sets the value of a cell at the specified coordinates.
-    /// It does not propagate the changes through the board.
-    #[inline]
-    fn set_at_index(&self, index: Index, cell: GameCell) -> &Self {
-        self.cell_at_index(index).set(cell);
-        self
-    }
-
-    /// This method simply sets the value of a cell at the specified coordinates.
-    /// It does not propagate the changes through the board.
-    #[inline]
-    fn set_at_coord(&self, coord: Coordinate, cell: GameCell) -> &Self {
-        self.cell_at_coord(coord).set(cell);
-        self
-    }
-
-    /// This method simply sets the value of a cell at the specified coordinates.
-    /// It does not propagate the changes through the board.
-    #[inline]
-    fn set_at_xy(&self, x: u8, y: u8, cell: GameCell) -> &Self {
-        self.set_at_coord(Coordinate::new(x, y), cell);
-        self
-    }
-
     #[inline]
     fn cell_at_index(&self, index: Index) -> &Cell<GameCell> {
         debug_assert!((*index as usize) < self.cells.len());
@@ -209,12 +185,6 @@ impl GameState {
 
                 let cell_set = cell.as_bitset();
                 if cell_under_test.contains_set(cell_set) {
-                    /*
-                    eprintln!(
-                        "index under test: {:?}, current index {:?}'s [{:?}] is in [{:?}]",
-                        index_under_test, index, cell_set, cell_under_test
-                    );
-                    */
                     return false;
                 }
             }

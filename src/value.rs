@@ -1,4 +1,4 @@
-use std::fmt::{write, Debug, Formatter};
+use std::fmt::{Debug, Formatter};
 use std::num::NonZeroU8;
 use std::ops::Deref;
 
