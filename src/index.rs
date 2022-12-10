@@ -56,8 +56,14 @@ impl IndexBitSet {
     /// The mask for storing the actual values.
     const MASK: u128 = 0b111111111_111111111_111111111_111111111_111111111_111111111_111111111_111111111_111111111u128;
 
+    /// The set that contains all indexes.
+    pub const ALL: IndexBitSet = IndexBitSet { state: Self::MASK };
+
+    /// The set that contains no indexes.
+    pub const NONE: IndexBitSet = IndexBitSet { state: 0 };
+
     #[inline]
-    pub const fn with_value(mut self, index: Index) -> Self {
+    pub const fn with_index(mut self, index: Index) -> Self {
         debug_assert!(index.0 < 81);
         let value = index.0 as u128;
         self.state |= (1u128 << value) & Self::MASK;
@@ -73,7 +79,7 @@ impl IndexBitSet {
     }
 
     #[inline]
-    pub const fn without_value(mut self, index: Index) -> Self {
+    pub const fn without_index(mut self, index: Index) -> Self {
         debug_assert!(index.0 < 81);
         let value = index.0 as u128;
         self.state &= (!(1u128 << value)) & Self::MASK;
@@ -101,6 +107,12 @@ impl IndexBitSet {
     }
 
     #[inline]
+    pub fn overlaps_with(&self, other: &IndexBitSet) -> bool {
+        let state = (self.state & other.state) & Self::MASK;
+        state > 0
+    }
+
+    #[inline]
     pub const fn contains(&self, index: Index) -> bool {
         if index.0 >= 81 {
             return false;
@@ -111,7 +123,7 @@ impl IndexBitSet {
         flag != 0
     }
 
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         (self.state & Self::MASK).count_ones() as _
     }
 
@@ -187,7 +199,7 @@ mod tests {
         let b = Index::new(17);
         let c = Index::new(2);
 
-        let bitset = IndexBitSet::default().with_value(a).with_value(b);
+        let bitset = IndexBitSet::default().with_index(a).with_index(b);
 
         assert!(bitset.contains(a));
         assert!(bitset.contains(b));
@@ -203,8 +215,8 @@ mod tests {
         let b = Index::new(17);
         let c = Index::new(2);
 
-        let bitset_a = IndexBitSet::default().with_value(a);
-        let bitset_b = IndexBitSet::default().with_value(b);
+        let bitset_a = IndexBitSet::default().with_index(a);
+        let bitset_b = IndexBitSet::default().with_index(b);
         let bitset = bitset_a.with_union(&bitset_b);
 
         assert!(bitset.contains(a));
@@ -219,10 +231,10 @@ mod tests {
         let c = Index::new(2);
 
         let bitset = IndexBitSet::default()
-            .with_value(a)
-            .with_value(b)
-            .with_value(c);
-        let bitset = bitset.without_value(a).without_value(b);
+            .with_index(a)
+            .with_index(b)
+            .with_index(c);
+        let bitset = bitset.without_index(a).without_index(b);
 
         assert!(!bitset.contains(a));
         assert!(!bitset.contains(b));
@@ -247,7 +259,7 @@ mod tests {
         let a = Index::new(80);
         let b = Index::new(17);
 
-        let bitset = IndexBitSet::default().with_value(a).with_value(b);
+        let bitset = IndexBitSet::default().with_index(a).with_index(b);
         let mut iter = bitset.iter();
 
         assert_eq!(iter.next(), Some(17));
