@@ -167,7 +167,7 @@ pub struct IndexBitSetIter<'a> {
 }
 
 impl<'a> Iterator for IndexBitSetIter<'a> {
-    type Item = u8;
+    type Item = Index;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index >= 81 {
@@ -184,7 +184,7 @@ impl<'a> Iterator for IndexBitSetIter<'a> {
         if matched >= 81 {
             None
         } else {
-            Some(matched)
+            Some(Index::new(matched))
         }
     }
 }
@@ -262,8 +262,8 @@ mod tests {
         let bitset = IndexBitSet::default().with_index(a).with_index(b);
         let mut iter = bitset.iter();
 
-        assert_eq!(iter.next(), Some(17));
-        assert_eq!(iter.next(), Some(80));
+        assert_eq!(iter.next(), Some(b));
+        assert_eq!(iter.next(), Some(a));
         assert_eq!(iter.next(), None);
         assert_eq!(iter.next(), None);
     }

@@ -1,5 +1,5 @@
 use crate::index::{Index, IndexBitSet, IndexBitSetIter};
-use crate::prelude::{Coordinate, GameCell};
+use crate::prelude::Coordinate;
 
 /// The set of all cell groups relevant to a game.
 #[derive(Default, Debug, Clone)]
@@ -8,30 +8,80 @@ pub struct CellGroups {
 }
 
 impl CellGroups {
-    pub fn with_group(mut self, group: CellGroup) -> Result<Self, OverlappingGroups> {
-        self.add_group(group)?;
-        Ok(self)
+    pub fn with_group(mut self, group: CellGroup) -> Self {
+        self.add_group(group);
+        self
     }
 
-    pub fn add_group(&mut self, group: CellGroup) -> Result<&mut Self, OverlappingGroups> {
-        for g in self.groups.iter() {
-            if g.indexes.overlaps_with(&group.indexes) {
-                return Err(OverlappingGroups {});
-            }
-        }
-
+    pub fn add_group(&mut self, group: CellGroup) -> &mut Self {
         self.groups.push(group);
-        Ok(self)
+        self
     }
 
-    pub fn default_sudoku() -> Self {
-        let mut groups = Self::default();
+    pub fn with_default_rows_and_columns(mut self) -> Self {
+        self.with_default_rows().with_default_columns()
+    }
+
+    //noinspection DuplicatedCode
+    fn with_default_rows(mut self) -> Self {
         let mut check = IndexBitSet::ALL;
-        let mut ids = 0;
+        let mut ids = self
+            .groups
+            .iter()
+            .flat_map(|x| x.id)
+            .max()
+            .unwrap_or_default();
+
+        for y in 0..9 {
+            let mut group = CellGroup::new(ids, CellGroupType::StandardRow);
+            ids += 1;
+            for x in 0..9 {
+                let coord = Coordinate::new(x, y).into();
+                group.add_index(coord);
+                check.remove(coord);
+            }
+
+            self.add_group(group);
+        }
+        self
+    }
+
+    //noinspection DuplicatedCode
+    fn with_default_columns(mut self) -> Self {
+        let mut check = IndexBitSet::ALL;
+        let mut ids = self
+            .groups
+            .iter()
+            .flat_map(|x| x.id)
+            .max()
+            .unwrap_or_default();
+
+        for x in 0..9 {
+            let mut group = CellGroup::new(ids, CellGroupType::StandardColumn);
+            ids += 1;
+            for y in 0..9 {
+                let coord = Coordinate::new(x, y).into();
+                group.add_index(coord);
+                check.remove(coord);
+            }
+
+            self.add_group(group);
+        }
+        self
+    }
+
+    pub fn with_default_sudoku_blocks(mut self) -> Self {
+        let mut check = IndexBitSet::ALL;
+        let mut ids = self
+            .groups
+            .iter()
+            .flat_map(|x| x.id)
+            .max()
+            .unwrap_or_default();
 
         for y in (0..9).step_by(3) {
             for x in (0..9).step_by(3) {
-                let mut group = CellGroup::with_id(ids);
+                let mut group = CellGroup::new(ids, CellGroupType::StandardBlock);
                 ids += 1;
 
                 for row in 0..3 {
@@ -42,35 +92,39 @@ impl CellGroups {
                     }
                 }
 
-                groups
-                    .add_group(group)
-                    .expect("default groups don't overlap");
+                self.add_group(group);
             }
         }
 
         debug_assert!(check.is_empty());
-        groups
+        self
     }
 
     #[inline]
-    pub fn get_at_xy(&self, x: u8, y: u8) -> Result<CellGroup, NoMatchingGroup> {
+    pub fn get_at_xy(&self, x: u8, y: u8) -> Result<Vec<CellGroup>, NoMatchingGroup> {
         debug_assert!(x <= 9 && y <= 9);
         self.get_at_coord(Coordinate::new(x, y))
     }
 
     #[inline]
-    pub fn get_at_coord(&self, coord: Coordinate) -> Result<CellGroup, NoMatchingGroup> {
+    pub fn get_at_coord(&self, coord: Coordinate) -> Result<Vec<CellGroup>, NoMatchingGroup> {
         self.get_at_index(coord.into())
     }
 
-    pub fn get_at_index(&self, index: Index) -> Result<CellGroup, NoMatchingGroup> {
+    pub fn get_at_index(&self, index: Index) -> Result<Vec<CellGroup>, NoMatchingGroup> {
+        let mut groups = Vec::default();
+
         for group in self.groups.iter() {
             if group.contains(index) {
-                return Ok(group.clone());
+                groups.push(group.clone());
             }
         }
 
-        Err(NoMatchingGroup {})
+        if groups.is_empty() {
+            Err(NoMatchingGroup {})
+        } else {
+            Ok(groups)
+        }
     }
 }
 
@@ -82,19 +136,36 @@ pub struct OverlappingGroups {}
 #[error("No matching group was found")]
 pub struct NoMatchingGroup {}
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum CellGroupType {
+    Custom,
+    StandardBlock,
+    StandardRow,
+    StandardColumn,
+}
+
+impl Default for CellGroupType {
+    fn default() -> Self {
+        CellGroupType::Custom
+    }
+}
+
 /// A group of related indexes, e.g. a row, a column, ...
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct CellGroup {
     /// The internal ID of this group.
     pub id: Option<usize>,
+    /// The type of the group
+    pub group_type: CellGroupType,
     /// The indexes for this group.
     indexes: IndexBitSet,
 }
 
 impl CellGroup {
-    pub fn with_id(id: usize) -> Self {
+    pub fn new(id: usize, group_type: CellGroupType) -> Self {
         Self {
             id: Some(id),
+            group_type,
             indexes: IndexBitSet::default(),
         }
     }
@@ -102,6 +173,10 @@ impl CellGroup {
     pub const fn with_index(mut self, index: Index) -> Self {
         self.indexes = self.indexes.with_index(index);
         self
+    }
+
+    pub fn from_indexes<T: IntoIterator<Item = Index>>(indexes: T) -> Self {
+        Self::default().with_indexes(indexes)
     }
 
     pub fn with_indexes<T: IntoIterator<Item = Index>>(mut self, indexes: T) -> Self {
@@ -148,7 +223,7 @@ mod tests {
 
     #[test]
     fn from_iter() {
-        let cg = CellGroup::from_iter([Index::new(0), Index::new(2), Index::new(3)]);
+        let cg = CellGroup::from_indexes([Index::new(0), Index::new(2), Index::new(3)]);
         assert!(cg.contains(Index::new(0)));
         assert!(cg.contains(Index::new(2)));
         assert!(cg.contains(Index::new(3)));
@@ -170,26 +245,6 @@ mod tests {
             Index::new(12), Index::new(13), Index::new(14),
             Index::new(21), Index::new(22), Index::new(23)]);
 
-        CellGroups::default()
-            .add_group(group_a)
-            .unwrap()
-            .add_group(group_b)
-            .unwrap();
-    }
-
-    //noinspection DuplicatedCode
-    #[test]
-    fn add_groups_overlaps_fail() {
-        #[rustfmt::skip]
-        let group_a = CellGroup::default().with_indexes([
-            Index::new(0), Index::new(1), Index::new(2),
-            Index::new(9), Index::new(10), Index::new(11),
-            Index::new(18), Index::new(19), Index::new(20)]);
-
-        assert!(CellGroups::default()
-            .add_group(group_a)
-            .unwrap()
-            .add_group(group_a)
-            .is_err());
+        CellGroups::default().add_group(group_a).add_group(group_b);
     }
 }

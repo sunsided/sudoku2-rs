@@ -3,12 +3,14 @@ use sudoku2::prelude::*;
 
 fn main() {
     println!("Cell groups:");
-    let groups = CellGroups::default_sudoku();
+    let groups = CellGroups::default()
+        .with_default_sudoku_blocks()
+        .with_default_rows_and_columns();
     print_cell_groups(&groups);
 
     println!("Initial game state:");
     let state = GameState::new();
-    state.set_at_xy(0, 0, GameCell::from_value(Value::ONE));
+    state.place_at_xy(0, 0, Value::ONE, &groups);
     print_game_state(&state);
 }
 
@@ -120,6 +122,7 @@ fn print_cell_groups(groups: &CellGroups) {
             }
 
             let group = groups.get_at_xy(x, y).expect("invalid groups");
+            let group = group.first().unwrap();
             print!(
                 "{} ",
                 group.id.map_or("-".into(), |x| group_names[x].clone())
