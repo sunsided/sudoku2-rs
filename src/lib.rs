@@ -1,5 +1,6 @@
 mod cell_group;
 mod coordinate;
+mod default_solver;
 mod game_cell;
 mod game_state;
 mod index;
@@ -8,6 +9,7 @@ mod value;
 pub mod prelude {
     pub use crate::cell_group::{CellGroup, CellGroups, OverlappingGroups};
     pub use crate::coordinate::Coordinate;
+    pub use crate::default_solver::{DefaultSolver, Unsolvable};
     pub use crate::game_cell::{GameCell, IndexedGameCell};
     pub use crate::game_state::GameState;
     pub use crate::index::Index;

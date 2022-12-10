@@ -63,6 +63,11 @@ impl IndexBitSet {
     pub const NONE: IndexBitSet = IndexBitSet { state: 0 };
 
     #[inline]
+    pub const fn empty() -> Self {
+        Self { state: 0 }
+    }
+
+    #[inline]
     pub const fn with_index(mut self, index: Index) -> Self {
         debug_assert!(index.0 < 81);
         let value = index.0 as u128;
@@ -76,6 +81,16 @@ impl IndexBitSet {
         let value = index.0 as u128;
         self.state |= (1u128 << value) & Self::MASK;
         self
+    }
+
+    #[inline]
+    pub fn try_insert(&mut self, index: Index) -> bool {
+        debug_assert!(index.0 < 81);
+        let value = index.0 as u128;
+        let bitmask = (1u128 << value) & Self::MASK;
+        let contains = (self.state & bitmask) > 0;
+        self.state |= bitmask;
+        !contains
     }
 
     #[inline]
@@ -200,6 +215,24 @@ mod tests {
         let c = Index::new(2);
 
         let bitset = IndexBitSet::default().with_index(a).with_index(b);
+
+        assert!(bitset.contains(a));
+        assert!(bitset.contains(b));
+        assert!(!bitset.contains(c));
+
+        assert_eq!(bitset.len(), 2);
+        assert!(!bitset.is_empty());
+    }
+
+    #[test]
+    fn insert() {
+        let a = Index::new(80);
+        let b = Index::new(17);
+        let c = Index::new(2);
+
+        let mut bitset = IndexBitSet::empty();
+        bitset.insert(a);
+        bitset.insert(b);
 
         assert!(bitset.contains(a));
         assert!(bitset.contains(b));

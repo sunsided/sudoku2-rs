@@ -1,8 +1,8 @@
 use crate::cell_group::CellGroups;
 use crate::game_cell::GameCell;
-use crate::index::Index;
-use crate::prelude::{CellGroup, Coordinate};
-use crate::value::Value;
+use crate::index::{Index, IndexBitSet};
+use crate::prelude::Coordinate;
+use crate::value::{Value, ValueBitSet};
 use std::cell::Cell;
 use std::mem::MaybeUninit;
 
@@ -91,6 +91,15 @@ impl GameState {
         self
     }
 
+    /// Forgets a value at the specified cell. No changes will be propagated,
+    /// but the cell will be treated as if the value was never an option.
+    #[inline]
+    pub fn forget_at_index(&self, index: Index, value: Value) -> &Self {
+        let cell = self.cell_at_index(index);
+        cell.set(cell.get().without_value(value));
+        self
+    }
+
     /// This method simply sets the value of a cell at the specified coordinates.
     /// It does not propagate the changes through the board.
     #[inline]
@@ -173,7 +182,52 @@ impl GameState {
             }
         }
 
-        todo!()
+        // Ensure values appear only once.
+        for index_under_test in 0..81 {
+            let index_under_test = Index::new(index_under_test);
+            let cell_under_test = self.get_at_index(index_under_test);
+
+            // Consider only cells with exactly one value.
+            // Zero-candidate cells are already ruled out.
+            if !cell_under_test.is_solved() {
+                continue;
+            }
+
+            let cell_under_test = cell_under_test.as_bitset();
+            let mut seen_indexes = IndexBitSet::empty().with_index(index_under_test);
+
+            let groups = groups.get_at_index(index_under_test).unwrap();
+            for group in groups.into_iter() {
+                for index in group.iter_indexes() {
+                    // Only process the indexes once.
+                    if !seen_indexes.try_insert(index) {
+                        continue;
+                    }
+
+                    let cell = self.get_at_index(index);
+
+                    // Consider only cells with exactly one value.
+                    // Zero-candidate cells are already ruled out.
+                    if !cell.is_solved() {
+                        continue;
+                    }
+
+                    let cell_set = cell.as_bitset();
+                    if cell_under_test.contains_set(cell_set) {
+                        /*
+                        eprintln!(
+                            "index under test: {:?}, current index {:?}'s [{:?}] is in [{:?}]",
+                            index_under_test, index, cell_set, cell_under_test
+                        );
+                        */
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // It's just a heuristic. :)
+        return true;
     }
 }
 

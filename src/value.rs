@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::{write, Debug, Formatter};
 use std::num::NonZeroU8;
 use std::ops::Deref;
 
@@ -70,7 +70,7 @@ pub struct ValueOutOfRangeError(u8);
 ///
 /// ## Technical Notes
 /// Practically this implementation allows for storing up to 65535 different indexes.
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct ValueBitSet {
     /// We anticipate at most 9 distinct values on a standard Sudoku game.
     /// We use a 16-bit type here to directly encode the field values,
@@ -166,6 +166,11 @@ impl ValueBitSet {
         flag != 0
     }
 
+    #[inline]
+    pub const fn contains_set(&self, values: &ValueBitSet) -> bool {
+        (self.state & values.state) == values.state
+    }
+
     pub const fn len(&self) -> usize {
         let masked = self.state & Self::MASK;
         let bits = masked.count_ones();
@@ -210,7 +215,7 @@ impl<'a> Iterator for ValueBitSetIter<'a> {
             return None;
         }
 
-        while self.index < 9
+        while self.index <= 9
             && !self
                 .value
                 .contains(unsafe { Value::new_unchecked(self.index) })
@@ -252,6 +257,18 @@ impl From<&[ValueOption]> for ValueBitSet {
             }
         }
         Self { state }
+    }
+}
+
+impl Debug for ValueBitSet {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for (i, value) in self.iter().enumerate() {
+            if i > 0 {
+                write!(f, " ").ok();
+            }
+            write!(f, "{}", value.0.get()).ok();
+        }
+        write!(f, "")
     }
 }
 
@@ -352,6 +369,17 @@ mod tests {
     }
 
     #[test]
+    fn iter_test() {
+        let bitset = ValueBitSet { state: 16 };
+        let mut iter = bitset.iter();
+
+        assert_eq!(iter.next(), Some(Value::FIVE));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
     pub fn all_values() {
         let set = ValueBitSet::all_values();
         assert_eq!(set.len(), 9);
@@ -376,5 +404,13 @@ mod tests {
         assert!(values.contains(&Value::SEVEN));
         assert!(values.contains(&Value::EIGHT));
         assert!(values.contains(&Value::NINE));
+    }
+
+    #[test]
+    pub fn len_works() {
+        let set = ValueBitSet::empty()
+            .with_value(Value::FIVE)
+            .with_value(Value::NINE);
+        assert_eq!(set.len(), 2);
     }
 }

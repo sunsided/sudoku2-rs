@@ -1,5 +1,6 @@
 use crate::index::{Index, IndexBitSet, IndexBitSetIter};
 use crate::prelude::Coordinate;
+use std::slice::Iter;
 
 /// The set of all cell groups relevant to a game.
 #[derive(Default, Debug, Clone)]
@@ -18,7 +19,7 @@ impl CellGroups {
         self
     }
 
-    pub fn with_default_rows_and_columns(mut self) -> Self {
+    pub fn with_default_rows_and_columns(self) -> Self {
         self.with_default_rows().with_default_columns()
     }
 
@@ -125,6 +126,10 @@ impl CellGroups {
         } else {
             Ok(groups)
         }
+    }
+
+    pub fn iter(&self) -> Iter<'_, CellGroup> {
+        self.groups.iter()
     }
 }
 

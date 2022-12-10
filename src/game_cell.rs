@@ -82,6 +82,13 @@ impl GameCell {
         self
     }
 
+    /// Removes a candidate from this cell.
+    #[inline]
+    pub fn without_value(mut self, value: Value) -> Self {
+        self.possible_values.remove(value);
+        self
+    }
+
     /// Converts this [`GameCell`] into an [`IndexedGameCell`].
     #[inline]
     pub fn into_indexed(self, index: Index) -> IndexedGameCell {
@@ -114,6 +121,12 @@ impl GameCell {
     #[inline]
     pub const fn empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// Gets the possible values as a bitset.
+    #[inline]
+    pub fn as_bitset(&self) -> &ValueBitSet {
+        &self.possible_values
     }
 
     /// Iterates all possible values for this cell.
