@@ -42,6 +42,19 @@ impl GameState {
     #[inline]
     pub fn place_at_index(&self, index: Index, value: Value, groups: &CellGroups) -> &Self {
         let cell = self.cell_at_index(index);
+
+        #[cfg(debug_assertions)]
+        {
+            let test = cell.get();
+            debug_assert!(
+                !test.is_solved() || test.contains(value),
+                "Attempted to overwrite solved cell at {index:?} with differing value: had {old:?}, instructed to write {new:?}",
+                index = index,
+                old = test.iter_candidates().next().unwrap(),
+                new = value
+            );
+        }
+
         cell.set(GameCell::from_value(value));
         let groups = groups
             .get_at_index(index)
@@ -111,6 +124,56 @@ impl GameState {
     #[inline]
     fn cell_at_coord(&self, coord: Coordinate) -> &Cell<GameCell> {
         self.cell_at_index(coord.into())
+    }
+
+    /// Determines if this board state is a valid solution.
+    pub fn is_solved(&self, groups: &CellGroups) -> bool {
+        // Naive check: Any cell with not exactly one remaining value
+        // implies the board is either unsolved or invalid.
+        for index in 0..81 {
+            let index = Index::new(index);
+            let cell = self.get_at_index(index);
+            if !cell.is_solved() {
+                return false;
+            }
+        }
+
+        // Since we now know that all cells have exactly one value,
+        // we can sanity check them.
+        for index in 0..81 {
+            let index = Index::new(index);
+            let cell = self.get_at_index(index);
+            let value = cell.iter_candidates().next().unwrap();
+
+            let groups = groups
+                .get_at_index(index)
+                .expect("no groups found for specified index");
+            for group in groups.into_iter() {
+                for peer_index in group.iter_indexes().filter(|x| *x > index) {
+                    let peer_cell = self.get_at_index(peer_index);
+                    let peer_value = peer_cell.iter_candidates().next().unwrap();
+                    if peer_value == value {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /// Determines if this board state is consistent (i.e. doesn't
+    /// violate the game rules) but does not check for a proper solution.
+    pub fn is_consistent(&self, groups: &CellGroups) -> bool {
+        for index in 0..81 {
+            let index = Index::new(index);
+            let cell = self.get_at_index(index);
+            if cell.is_impossible() {
+                return false;
+            }
+        }
+
+        todo!()
     }
 }
 
