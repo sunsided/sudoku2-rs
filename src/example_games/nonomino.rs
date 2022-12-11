@@ -4,18 +4,16 @@ use crate::prelude::*;
 #[rustfmt::skip]
 pub fn example_nonomino() -> Game {
     let mut groups = CellGroups::default()
+        .with_group(CellGroup::from_u8_slice(&[0, 1, 2, 9, 10, 11, 18, 27, 28]))
+        .with_group(CellGroup::from_u8_slice(&[3, 12, 13, 14, 23, 24, 25, 34, 35]))
+        .with_group(CellGroup::from_u8_slice(&[4, 5, 6, 7, 8, 15, 16, 17, 26]))
+        .with_group(CellGroup::from_u8_slice(&[19, 20, 21, 22, 29, 36, 37, 38, 39]))
+        .with_group(CellGroup::from_u8_slice(&[30, 31, 32, 33, 40, 47, 48, 49, 50]))
+        .with_group(CellGroup::from_u8_slice(&[41, 42, 43, 44, 51, 58, 59, 60, 61]))
+        .with_group(CellGroup::from_u8_slice(&[45, 46, 55, 56, 57, 66, 67, 68, 77]))
+        .with_group(CellGroup::from_u8_slice(&[54, 63, 64, 65, 72, 73, 74, 75, 76]))
+        .with_group(CellGroup::from_u8_slice(&[52, 53, 62, 69, 70, 71, 78, 79, 80]))
         .with_default_rows_and_columns();
-
-    groups
-        .add_group(CellGroup::from_u8_slice(&[0, 1, 2, 9, 10, 11, 18, 27, 28]))
-        .add_group(CellGroup::from_u8_slice(&[3, 12, 13, 14, 23, 24, 25, 34, 35]))
-        .add_group(CellGroup::from_u8_slice(&[4, 5, 6, 7, 8, 15, 16, 17, 26]))
-        .add_group(CellGroup::from_u8_slice(&[19, 20, 21, 22, 29, 36, 37, 38, 39]))
-        .add_group(CellGroup::from_u8_slice(&[30, 31, 32, 33, 40, 47, 48, 49, 50]))
-        .add_group(CellGroup::from_u8_slice(&[41, 42, 43, 44, 51, 58, 59, 60, 61]))
-        .add_group(CellGroup::from_u8_slice(&[45, 46, 55, 56, 57, 66, 67, 68, 77]))
-        .add_group(CellGroup::from_u8_slice(&[54, 63, 64, 65, 72, 73, 74, 75, 76]))
-        .add_group(CellGroup::from_u8_slice(&[52, 53, 62, 69, 70, 71, 78, 79, 80]));
 
     let x = 0u8;
     let state = GameState::new_from([

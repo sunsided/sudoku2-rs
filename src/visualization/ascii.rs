@@ -95,7 +95,7 @@ pub fn print_game_state(state: &GameState) {
 }
 
 pub fn print_cell_groups(groups: &CellGroups) {
-    let mut group_names = Vec::default();
+    let mut group_names = vec!["@".into()];
     for i in 0..27 {
         group_names.push(format!("{}", (b'A' + i) as char));
     }
@@ -124,7 +124,8 @@ pub fn print_cell_groups(groups: &CellGroups) {
                 print!("│ ");
             }
 
-            let group = groups.get_groups_at_xy(x, y).expect("invalid groups");
+            let mut group = groups.get_groups_at_xy(x, y).expect("invalid groups");
+            group.sort_unstable_by_key(|g| g.group_type); // ensure custom groups first
             let group = group.first().unwrap();
             print!(
                 "{} ",

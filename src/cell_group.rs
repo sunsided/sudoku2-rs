@@ -3,6 +3,14 @@ use crate::prelude::Coordinate;
 use std::fmt::{Debug, Formatter};
 use std::slice::Iter;
 
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub enum CellGroupType {
+    Custom,
+    StandardBlock,
+    StandardRow,
+    StandardColumn,
+}
+
 /// The set of all cell groups relevant to a game.
 #[derive(Default, Debug, Clone)]
 pub struct CellGroups {
@@ -21,7 +29,12 @@ impl CellGroups {
         self
     }
 
-    pub fn add_group(&mut self, group: CellGroup) -> &mut Self {
+    pub fn add_group(&mut self, mut group: CellGroup) -> &mut Self {
+        if group.id.is_none() {
+            let ids = self.get_highest_id();
+            group.id = Some(ids + 1);
+        }
+
         self.groups.push(group);
         self
     }
@@ -33,12 +46,7 @@ impl CellGroups {
     //noinspection DuplicatedCode
     fn with_default_rows(mut self) -> Self {
         let mut check = IndexBitSet::ALL;
-        let mut ids = self
-            .groups
-            .iter()
-            .flat_map(|x| x.id)
-            .max()
-            .unwrap_or_default();
+        let mut ids = self.get_highest_id();
 
         for y in 0..9 {
             let mut group = CellGroup::new(ids, CellGroupType::StandardRow);
@@ -54,19 +62,22 @@ impl CellGroups {
         self
     }
 
-    //noinspection DuplicatedCode
-    fn with_default_columns(mut self) -> Self {
-        let mut check = IndexBitSet::ALL;
-        let mut ids = self
-            .groups
+    fn get_highest_id(&self) -> usize {
+        self.groups
             .iter()
             .flat_map(|x| x.id)
             .max()
-            .unwrap_or_default();
+            .unwrap_or_default()
+    }
+
+    //noinspection DuplicatedCode
+    fn with_default_columns(mut self) -> Self {
+        let mut check = IndexBitSet::ALL;
+        let mut ids = self.get_highest_id();
 
         for x in 0..9 {
-            let mut group = CellGroup::new(ids, CellGroupType::StandardColumn);
             ids += 1;
+            let mut group = CellGroup::new(ids, CellGroupType::StandardColumn);
             for y in 0..9 {
                 let coord = Coordinate::new(x, y).into();
                 group.add_index(coord);
@@ -89,8 +100,8 @@ impl CellGroups {
 
         for y in (0..9).step_by(3) {
             for x in (0..9).step_by(3) {
-                let mut group = CellGroup::new(ids, CellGroupType::StandardBlock);
                 ids += 1;
+                let mut group = CellGroup::new(ids, CellGroupType::StandardBlock);
 
                 for row in 0..3 {
                     for col in 0..3 {
@@ -195,14 +206,6 @@ pub struct OverlappingGroups {}
 #[error("No matching group was found")]
 pub struct NoMatchingGroup {}
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub enum CellGroupType {
-    Custom,
-    StandardBlock,
-    StandardRow,
-    StandardColumn,
-}
-
 impl Debug for CellGroupType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -221,7 +224,7 @@ impl Default for CellGroupType {
 }
 
 /// A group of related indexes, e.g. a row, a column, ...
-#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct CellGroup {
     /// The internal ID of this group.
     pub id: Option<usize>,
@@ -257,6 +260,11 @@ impl CellGroup {
         for index in indexes.into_iter() {
             self.indexes = self.indexes.with_index(index);
         }
+        self
+    }
+
+    pub fn with_type(mut self, cell_type: CellGroupType) -> Self {
+        self.group_type = cell_type;
         self
     }
 
