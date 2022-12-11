@@ -70,6 +70,7 @@ pub fn build_command() -> Command {
                 .long("sudoku")
                 .help("Solve a regular Sudoku")
                 .action(clap::ArgAction::SetTrue)
+                .help_heading("Game type")
                 .group("type"),
         )
         .arg(
@@ -77,6 +78,7 @@ pub fn build_command() -> Command {
                 .long("nonomino")
                 .help("Solve a Nonomino-type game")
                 .action(clap::ArgAction::SetTrue)
+                .help_heading("Game type")
                 .group("type"),
         )
         .arg(
@@ -84,6 +86,7 @@ pub fn build_command() -> Command {
                 .long("hyper")
                 .help("Solve a Hypersoduko-type game")
                 .action(clap::ArgAction::SetTrue)
+                .help_heading("Game type")
                 .group("type"),
         )
         .group(ArgGroup::new("type"));
