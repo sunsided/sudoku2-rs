@@ -212,7 +212,7 @@ impl ValueBitSet {
     pub fn iter(&self) -> ValueBitSetIter {
         ValueBitSetIter {
             value: self,
-            index: 1, // Zero is invalid!
+            index: 0,
         }
     }
 
@@ -261,27 +261,19 @@ impl<'a> Iterator for ValueBitSetIter<'a> {
     type Item = Value;
 
     fn next(&mut self) -> Option<Self::Item> {
-        debug_assert_ne!(self.index, 0);
-        if self.index > 9 {
-            return None;
+        let state = self.value.state;
+        let mut index = self.index;
+        while index < 9 {
+            let test = (state >> index) & 0b1;
+            index += 1;
+            if test != 0 {
+                self.index = index;
+                return Some(unsafe { Value::new_unchecked(index) });
+            }
         }
 
-        while self.index <= 9
-            && !self
-                .value
-                .contains(unsafe { Value::new_unchecked(self.index) })
-        {
-            self.index += 1;
-        }
-
-        let matched = self.index;
-        self.index += 1;
-
-        if matched > 9 {
-            None
-        } else {
-            Some(Value::try_from(matched).unwrap())
-        }
+        self.index = 10;
+        None
     }
 }
 
