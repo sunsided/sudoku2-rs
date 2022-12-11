@@ -8,7 +8,7 @@ fn main() {
         .target(env_logger::Target::Stdout)
         .init();
 
-    let game = sudoku2::example_games::sudoku::example_sudoku_naked_twins();
+    let game = sudoku2::example_games::sudoku::example_sudoku();
 
     println!("Cell groups:");
     game.print_cell_groups();

@@ -52,21 +52,8 @@ impl GameState {
         value: Value,
         groups: &CellGroups,
     ) -> &Self {
-        let cell = self.cell_at_index(index);
+        self.set_at_index(index, value);
 
-        #[cfg(debug_assertions)]
-        {
-            let test = cell.get();
-            debug_assert!(
-                !test.is_solved() || test.contains(value),
-                "Attempted to overwrite solved cell at {index:?} with differing value: had {old:?}, instructed to write {new:?}",
-                index = index,
-                old = test.iter_candidates().next().unwrap(),
-                new = value
-            );
-        }
-
-        cell.set(GameCell::from_value(value));
         let groups = groups
             .get_at_index(index)
             .expect("group does not exist at index");
@@ -106,6 +93,44 @@ impl GameState {
         groups: &CellGroups,
     ) -> &Self {
         self.place_and_propagate_at_coord(Coordinate::new(x, y), value, groups);
+        self
+    }
+
+    /// Places a value at the specified cell, but does not propagate the changes through the board.
+    /// For making a proper move, use [`place_and_propagate_at_index`] instead.
+    #[inline]
+    pub fn set_at_index(&self, index: Index, value: Value) -> &Self {
+        let cell = self.cell_at_index(index);
+
+        #[cfg(debug_assertions)]
+        {
+            let test = cell.get();
+            debug_assert!(
+                !test.is_solved() || test.contains(value),
+                "Attempted to overwrite solved cell at {index:?} with differing value: had {old:?}, instructed to write {new:?}",
+                index = index,
+                old = test.iter_candidates().next().unwrap(),
+                new = value
+            );
+        }
+
+        cell.set(GameCell::from_value(value));
+        self
+    }
+
+    /// Places a value at the specified cell, but does not propagate the changes through the board.
+    /// For making a proper move, use [`place_and_propagate_at_coord`] instead.
+    #[inline]
+    pub fn set_at_coord(&self, coord: Coordinate, value: Value) -> &Self {
+        self.set_at_index(coord.into(), value);
+        self
+    }
+
+    /// Places a value at the specified cell, but does not propagate the changes through the board.
+    /// For making a proper move, use [`place_and_propagate_at_xy`] instead.
+    #[inline]
+    pub fn set_at_xy(&self, x: u8, y: u8, value: Value) -> &Self {
+        self.set_at_coord(Coordinate::new(x, y), value);
         self
     }
 
