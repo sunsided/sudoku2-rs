@@ -35,9 +35,9 @@ impl Default for SmallestIndex {
 impl DefaultSolver {
     pub fn new<G: AsRef<CellGroups>>(groups: G) -> Self {
         let strategies: Vec<Box<dyn Strategy>> = vec![
-            Box::new(NakedSingles::default()),
-            Box::new(HiddenSingles::default()),
-            Box::new(NakedTwins::default()),
+            NakedSingles::new_box(),
+            HiddenSingles::new_box(),
+            NakedTwins::new_box(),
         ];
 
         Self {

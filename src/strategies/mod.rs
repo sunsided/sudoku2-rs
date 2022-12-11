@@ -2,7 +2,7 @@ mod hidden_singles;
 mod naked_singles;
 mod naked_twins;
 
-use crate::cell_group::CellGroups;
+use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
 use std::fmt::Debug;
 use std::ops::{BitOr, BitOrAssign};
@@ -23,6 +23,27 @@ pub trait Strategy: Debug {
         &self,
         state: &GameState,
         groups: &CellGroups,
+    ) -> Result<StrategyResult, InvalidGameState> {
+        let mut result = StrategyResult::NoChange;
+        result |= self.apply_in_group(state, groups, CellGroupType::Custom)?;
+        result |= self.apply_in_group(state, groups, CellGroupType::StandardBlock)?;
+        result |= self.apply_in_group(state, groups, CellGroupType::StandardRow)?;
+        result |= self.apply_in_group(state, groups, CellGroupType::StandardColumn)?;
+        Ok(result)
+    }
+
+    /// Applies the strategy to the state, restricting
+    /// it to a specific group of peers.
+    ///
+    /// ## Panics
+    /// This method is not guaranteed to be implemented for every
+    /// strategy and is to be considered an implementation detail.
+    /// Solver code should execute [`Strategy::apply`] instead.
+    fn apply_in_group(
+        &self,
+        state: &GameState,
+        groups: &CellGroups,
+        group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState>;
 }
 

@@ -1,4 +1,4 @@
-use crate::cell_group::CellGroups;
+use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::{Index, IndexBitSet};
 use crate::strategies::{Strategy, StrategyResult};
@@ -15,6 +15,12 @@ use std::fmt::{Debug, Formatter};
 /// singles and ensure they are correctly propagated.
 #[derive(Default)]
 pub struct NakedSingles {}
+
+impl NakedSingles {
+    pub fn new_box() -> Box<Self> {
+        Box::new(Self::default())
+    }
+}
 
 impl Debug for NakedSingles {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -70,5 +76,14 @@ impl Strategy for NakedSingles {
         } else {
             Ok(StrategyResult::NoChange)
         }
+    }
+
+    fn apply_in_group(
+        &self,
+        _state: &GameState,
+        _groups: &CellGroups,
+        _group_type: CellGroupType,
+    ) -> Result<StrategyResult, InvalidGameState> {
+        unimplemented!("This strategy is not group aware")
     }
 }

@@ -18,6 +18,22 @@ use std::fmt::{Debug, Formatter};
 pub struct NakedTwins {}
 
 impl NakedTwins {
+    pub fn new_box() -> Box<Self> {
+        Box::new(Self::default())
+    }
+}
+
+impl Debug for NakedTwins {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Naked twins")
+    }
+}
+
+impl Strategy for NakedTwins {
+    fn always_continue(&self) -> bool {
+        false
+    }
+
     fn apply_in_group(
         &self,
         state: &GameState,
@@ -121,31 +137,6 @@ impl NakedTwins {
         } else {
             Ok(StrategyResult::NoChange)
         }
-    }
-}
-
-impl Debug for NakedTwins {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Naked twins")
-    }
-}
-
-impl Strategy for NakedTwins {
-    fn always_continue(&self) -> bool {
-        false
-    }
-
-    fn apply(
-        &self,
-        state: &GameState,
-        groups: &CellGroups,
-    ) -> Result<StrategyResult, InvalidGameState> {
-        let mut result = StrategyResult::NoChange;
-        result |= self.apply_in_group(state, groups, CellGroupType::Custom)?;
-        result |= self.apply_in_group(state, groups, CellGroupType::StandardBlock)?;
-        result |= self.apply_in_group(state, groups, CellGroupType::StandardRow)?;
-        result |= self.apply_in_group(state, groups, CellGroupType::StandardColumn)?;
-        Ok(result)
     }
 }
 
