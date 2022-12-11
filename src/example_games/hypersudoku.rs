@@ -37,7 +37,7 @@ use crate::prelude::*;
 /// ```
 #[rustfmt::skip]
 pub fn example_hypersudoku() -> Game {
-    let mut groups = CellGroups::default()
+    let groups = CellGroups::default()
         .with_hypersudoku_windows()
         .with_default_sudoku_blocks()
         .with_default_rows_and_columns();

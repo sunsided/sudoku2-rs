@@ -36,7 +36,7 @@ use crate::prelude::*;
 /// ```
 #[rustfmt::skip]
 pub fn example_nonomino() -> Game {
-    let mut groups = CellGroups::default()
+    let groups = CellGroups::default()
         .with_group(CellGroup::from_u8_slice(&[0, 1, 2, 9, 10, 11, 18, 27, 28]))
         .with_group(CellGroup::from_u8_slice(&[3, 12, 13, 14, 23, 24, 25, 34, 35]))
         .with_group(CellGroup::from_u8_slice(&[4, 5, 6, 7, 8, 15, 16, 17, 26]))

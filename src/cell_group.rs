@@ -119,7 +119,7 @@ impl CellGroups {
         self
     }
 
-    pub fn with_hypersudoku_windows(mut self) -> Self {
+    pub fn with_hypersudoku_windows(self) -> Self {
         self.with_group(CellGroup::from_u8_slice(&[
             10, 11, 12, 19, 20, 21, 28, 29, 30,
         ]))

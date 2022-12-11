@@ -2,11 +2,23 @@
 
 Another take at Sudoku solving in Rust. This is a weekend-ish remake of my previous pet project
 at [sunsided/rust-sudoku-solver](https://github.com/sunsided/rust-sudoku-solver).
+Unlike the previous experiment, this solver correctly solves Hypersudokus and requires fewer branches.
+Internally, value candidates and indexes are encoded via 16- and 128-bit bitsets ([ValueBitSet], [IndexBitSet]),
+reducing the overhead for constructing and testing hashsets.
+
+[ValueBitSet]: src/value.rs
+[IndexBitSet]: src/index.rs
 
 To show the available options for the example, execute:
 
 ```bash
 cargo run --example solver -- --help
+```
+
+To run the default example with debug output, execute:
+
+```bash
+RUST_LOG=debug cargo run --release --example solver
 ```
 
 ## Sudoku example
@@ -20,7 +32,7 @@ For reference, here's an example puzzle from the Wikipedia [Sudoku](https://en.w
 The solver's output is shown below. To run, execute:
 
 ```bash
-$ RUST_LOG=debug cargo run --release --example solver -- --sudoku
+$ cargo run --release --example solver -- --sudoku
 ```
 
 ### Cell groups
@@ -142,7 +154,7 @@ For reference, here's an example Nonomino from the Wikipedia [Sudoku](https://en
 The solver's output is shown below. To run, execute:
 
 ```bash
-$ RUST_LOG=debug cargo run --release --example solver -- --nonomino
+$ cargo run --release --example solver -- --nonomino
 ```
 
 ### Cell groups
@@ -258,7 +270,7 @@ $ RUST_LOG=debug cargo run --release --example solver -- --nonomino
 A Hypersudoku example. To run it, execute:
 
 ```bash
-$ RUST_LOG=debug cargo run --release --example solver -- --hyper
+$ cargo run --release --example solver -- --hyper
 ```
 
 ### Initial state
