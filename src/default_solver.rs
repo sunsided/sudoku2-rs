@@ -62,221 +62,13 @@ impl DefaultSolver {
                 continue;
             }
 
-            'solving: loop {
-                match self.play_naked_singles(&state) {
-                    Err(_) => {
-                        // continue with previous stack frame
-                        continue;
-                    }
-                    Ok(_) => {
-                        #[cfg(debug_assertions)]
-                        {
-                            if !state.is_consistent(&self.groups) {
-                                debug!(
-                                "Naked singles resulted in inconsistent state - ignoring branch"
-                            );
-                                self.print_state(&state);
-                                continue 'stack;
-                            }
-                        }
-
-                        // always continue.
-                    }
-                }
-
-                match self.play_hidden_singles_in_group(&state, CellGroupType::StandardColumn) {
-                    Err(_) => {
-                        // continue with previous stack frame
-                        continue;
-                    }
-                    Ok(applied) => {
-                        #[cfg(debug_assertions)]
-                        {
-                            if !state.is_consistent(&self.groups) {
-                                debug!(
-                                "Hidden singles in standard columns resulted in inconsistent state - ignoring branch"
-                            );
-                                self.print_state(&state);
-                                continue 'stack;
-                            }
-                        }
-
-                        if applied {
-                            continue 'solving;
-                        }
-                    }
-                }
-
-                match self.play_hidden_singles_in_group(&state, CellGroupType::StandardRow) {
-                    Err(_) => {
-                        // continue with previous stack frame
-                        continue;
-                    }
-                    Ok(applied) => {
-                        #[cfg(debug_assertions)]
-                        {
-                            if !state.is_consistent(&self.groups) {
-                                debug!(
-                                "Hidden singles in standard rows resulted in inconsistent state - ignoring branch"
-                            );
-                                self.print_state(&state);
-                                continue 'stack;
-                            }
-                        }
-
-                        if applied {
-                            continue 'solving;
-                        }
-                    }
-                }
-
-                match self.play_hidden_singles_in_group(&state, CellGroupType::StandardBlock) {
-                    Err(_) => {
-                        // continue with previous stack frame
-                        continue;
-                    }
-                    Ok(applied) => {
-                        #[cfg(debug_assertions)]
-                        {
-                            if !state.is_consistent(&self.groups) {
-                                debug!(
-                                "Hidden singles in standard blocks resulted in inconsistent state - ignoring branch"
-                            );
-                                self.print_state(&state);
-                                continue 'stack;
-                            }
-                        }
-
-                        if applied {
-                            continue 'solving;
-                        }
-                    }
-                }
-
-                match self.play_hidden_singles_in_group(&state, CellGroupType::Custom) {
-                    Err(_) => {
-                        // continue with previous stack frame
-                        continue;
-                    }
-                    Ok(applied) => {
-                        #[cfg(debug_assertions)]
-                        {
-                            if !state.is_consistent(&self.groups) {
-                                debug!(
-                                "Hidden singles in custom groups resulted in inconsistent state - ignoring branch"
-                            );
-                                self.print_state(&state);
-                                continue 'stack;
-                            }
-                        }
-
-                        if applied {
-                            continue 'solving;
-                        }
-                    }
-                }
-
-                match self.play_naked_twins_in_group(&state, CellGroupType::StandardColumn) {
-                    Err(_) => {
-                        // continue with previous stack frame
-                        continue;
-                    }
-                    Ok(applied) => {
-                        #[cfg(debug_assertions)]
-                        {
-                            if !state.is_consistent(&self.groups) {
-                                debug!(
-                                    "Naked twins in standard columns resulted in inconsistent state - ignoring branch"
-                                );
-                                self.print_state(&state);
-                                continue 'stack;
-                            }
-                        }
-
-                        if applied {
-                            continue 'solving;
-                        }
-                    }
-                }
-
-                match self.play_naked_twins_in_group(&state, CellGroupType::StandardRow) {
-                    Err(_) => {
-                        // continue with previous stack frame
-                        continue;
-                    }
-                    Ok(applied) => {
-                        #[cfg(debug_assertions)]
-                        {
-                            if !state.is_consistent(&self.groups) {
-                                debug!(
-                                    "Naked twins in standard rows resulted in inconsistent state - ignoring branch"
-                                );
-                                self.print_state(&state);
-                                continue 'stack;
-                            }
-                        }
-
-                        if applied {
-                            continue 'solving;
-                        }
-                    }
-                }
-
-                match self.play_naked_twins_in_group(&state, CellGroupType::StandardBlock) {
-                    Err(_) => {
-                        // continue with previous stack frame
-                        continue;
-                    }
-                    Ok(applied) => {
-                        #[cfg(debug_assertions)]
-                        {
-                            if !state.is_consistent(&self.groups) {
-                                debug!(
-                                    "Naked twins in standard blocks resulted in inconsistent state - ignoring branch"
-                                );
-                                self.print_state(&state);
-                                continue 'stack;
-                            }
-                        }
-
-                        if applied {
-                            continue 'solving;
-                        }
-                    }
-                }
-
-                match self.play_naked_twins_in_group(&state, CellGroupType::Custom) {
-                    Err(_) => {
-                        // continue with previous stack frame
-                        continue;
-                    }
-                    Ok(applied) => {
-                        #[cfg(debug_assertions)]
-                        {
-                            if !state.is_consistent(&self.groups) {
-                                debug!(
-                                    "Naked twins in custom groups resulted in inconsistent state - ignoring branch"
-                                );
-                                self.print_state(&state);
-                                continue 'stack;
-                            }
-                        }
-
-                        if applied {
-                            continue 'solving;
-                        }
-                    }
-                }
-
-                // No more strategies.
-                break;
-            }
-
-            if !state.is_consistent(&self.groups) {
+            if self.apply_strategies(&state).is_err() {
                 debug!("Applying strategies resulted in inconsistent state - ignoring branch");
                 self.print_state(&state);
                 continue 'stack;
             }
+
+            debug_assert!(state.is_consistent(&self.groups));
 
             if state.is_solved(&self.groups) {
                 return Ok(state);
@@ -321,6 +113,198 @@ impl DefaultSolver {
         }
 
         Err(Unsolvable(last_seen_state))
+    }
+
+    /// Applies different strategies for solving the board without branching.
+    fn apply_strategies(&self, state: &GameState) -> Result<(), InvalidGameState> {
+        'solving: loop {
+            match self.play_naked_singles(&state) {
+                Err(e) => return Err(e),
+                Ok(_) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        if !state.is_consistent(&self.groups) {
+                            debug!(
+                                "Naked singles resulted in inconsistent state - ignoring branch"
+                            );
+                            self.print_state(&state);
+                            return Err(InvalidGameState {});
+                        }
+                    }
+
+                    // always continue.
+                }
+            }
+
+            match self.play_hidden_singles_in_group(&state, CellGroupType::StandardColumn) {
+                Err(e) => return Err(e),
+                Ok(applied) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        if !state.is_consistent(&self.groups) {
+                            debug!(
+                                "Hidden singles in standard columns resulted in inconsistent state - ignoring branch"
+                            );
+                            self.print_state(&state);
+                            return Err(InvalidGameState {});
+                        }
+                    }
+
+                    if applied {
+                        continue 'solving;
+                    }
+                }
+            }
+
+            match self.play_hidden_singles_in_group(&state, CellGroupType::StandardRow) {
+                Err(e) => return Err(e),
+                Ok(applied) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        if !state.is_consistent(&self.groups) {
+                            debug!(
+                                "Hidden singles in standard rows resulted in inconsistent state - ignoring branch"
+                            );
+                            self.print_state(&state);
+                            return Err(InvalidGameState {});
+                        }
+                    }
+
+                    if applied {
+                        continue 'solving;
+                    }
+                }
+            }
+
+            match self.play_hidden_singles_in_group(&state, CellGroupType::StandardBlock) {
+                Err(e) => return Err(e),
+                Ok(applied) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        if !state.is_consistent(&self.groups) {
+                            debug!(
+                                "Hidden singles in standard blocks resulted in inconsistent state - ignoring branch"
+                            );
+                            self.print_state(&state);
+                            return Err(InvalidGameState {});
+                        }
+                    }
+
+                    if applied {
+                        continue 'solving;
+                    }
+                }
+            }
+
+            match self.play_hidden_singles_in_group(&state, CellGroupType::Custom) {
+                Err(e) => return Err(e),
+                Ok(applied) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        if !state.is_consistent(&self.groups) {
+                            debug!(
+                                "Hidden singles in custom groups resulted in inconsistent state - ignoring branch"
+                            );
+                            self.print_state(&state);
+                            return Err(InvalidGameState {});
+                        }
+                    }
+
+                    if applied {
+                        continue 'solving;
+                    }
+                }
+            }
+
+            match self.play_naked_twins_in_group(&state, CellGroupType::StandardColumn) {
+                Err(e) => return Err(e),
+                Ok(applied) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        if !state.is_consistent(&self.groups) {
+                            debug!(
+                                    "Naked twins in standard columns resulted in inconsistent state - ignoring branch"
+                                );
+                            self.print_state(&state);
+                            return Err(InvalidGameState {});
+                        }
+                    }
+
+                    if applied {
+                        continue 'solving;
+                    }
+                }
+            }
+
+            match self.play_naked_twins_in_group(&state, CellGroupType::StandardRow) {
+                Err(e) => return Err(e),
+                Ok(applied) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        if !state.is_consistent(&self.groups) {
+                            debug!(
+                                    "Naked twins in standard rows resulted in inconsistent state - ignoring branch"
+                                );
+                            self.print_state(&state);
+                            return Err(InvalidGameState {});
+                        }
+                    }
+
+                    if applied {
+                        continue 'solving;
+                    }
+                }
+            }
+
+            match self.play_naked_twins_in_group(&state, CellGroupType::StandardBlock) {
+                Err(e) => return Err(e),
+                Ok(applied) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        if !state.is_consistent(&self.groups) {
+                            debug!(
+                                    "Naked twins in standard blocks resulted in inconsistent state - ignoring branch"
+                                );
+                            self.print_state(&state);
+                            return Err(InvalidGameState {});
+                        }
+                    }
+
+                    if applied {
+                        continue 'solving;
+                    }
+                }
+            }
+
+            match self.play_naked_twins_in_group(&state, CellGroupType::Custom) {
+                Err(e) => return Err(e),
+                Ok(applied) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        if !state.is_consistent(&self.groups) {
+                            debug!(
+                                    "Naked twins in custom groups resulted in inconsistent state - ignoring branch"
+                                );
+                            self.print_state(&state);
+                            return Err(InvalidGameState {});
+                        }
+                    }
+
+                    if applied {
+                        continue 'solving;
+                    }
+                }
+            }
+
+            // No more strategies.
+            break;
+        }
+
+        if state.is_consistent(&self.groups) {
+            Ok(())
+        } else {
+            return Err(InvalidGameState {});
+        }
     }
 
     /// Identifies and realizes naked singles.
