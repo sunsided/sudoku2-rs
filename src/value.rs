@@ -135,6 +135,12 @@ impl ValueBitSet {
         self
     }
 
+    #[inline]
+    pub fn remove_many(&mut self, values: &ValueBitSet) -> &mut Self {
+        self.state &= (!values.state) & Self::MASK;
+        self
+    }
+
     /// Sets the possible values to only the specified value.
     #[inline]
     pub fn set_to(&mut self, value: Value) -> &mut Self {
@@ -412,5 +418,23 @@ mod tests {
             .with_value(Value::FIVE)
             .with_value(Value::NINE);
         assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn remove_many() {
+        let a = Value::try_from(9).unwrap();
+        let b = Value::try_from(5).unwrap();
+        let c = Value::try_from(2).unwrap();
+
+        let mut bitset = ValueBitSet::default()
+            .with_value(a)
+            .with_value(b)
+            .with_value(c);
+        let remove = ValueBitSet::default().with_value(a).with_value(b);
+        bitset.remove_many(remove);
+
+        assert!(!bitset.contains(a));
+        assert!(!bitset.contains(b));
+        assert!(bitset.contains(c));
     }
 }

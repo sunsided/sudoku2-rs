@@ -1,8 +1,14 @@
+use std::io::Write;
 use std::num::NonZeroU8;
 use std::time::Instant;
 use sudoku2::prelude::*;
 
 fn main() {
+    // Enable logging with RUST_LOG=debug
+    env_logger::builder()
+        .target(env_logger::Target::Stdout)
+        .init();
+
     println!("Cell groups:");
     let groups = CellGroups::default()
         .with_default_sudoku_blocks()
@@ -137,7 +143,8 @@ fn main() {
 
     assert!(state.is_consistent(&groups));
 
-    let solver = DefaultSolver::new(groups);
+    let mut solver = DefaultSolver::new(groups);
+    solver.set_print_fn(|state| print_game_state(state));
 
     let now = Instant::now();
     let solved = solver.solve(state).unwrap();
@@ -225,7 +232,8 @@ fn print_game_state(state: &GameState) {
         }
     }
 
-    println!()
+    println!();
+    std::io::stdout().flush().unwrap();
 }
 
 fn print_cell_groups(groups: &CellGroups) {
@@ -308,5 +316,6 @@ fn print_cell_groups(groups: &CellGroups) {
         }
     }
 
-    println!()
+    println!();
+    std::io::stdout().flush().unwrap();
 }

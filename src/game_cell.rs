@@ -11,7 +11,7 @@ pub struct GameCell {
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct IndexedGameCell {
     /// The index of this cell.
-    index: Index,
+    pub index: Index,
     /// The inner cell.
     inner: GameCell,
 }
@@ -86,6 +86,13 @@ impl GameCell {
     #[inline]
     pub fn without_value(mut self, value: Value) -> Self {
         self.possible_values.remove(value);
+        self
+    }
+
+    /// Removes a candidate from this cell.
+    #[inline]
+    pub fn without_values(mut self, values: &ValueBitSet) -> Self {
+        self.possible_values.remove_many(values);
         self
     }
 

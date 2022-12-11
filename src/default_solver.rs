@@ -1,9 +1,14 @@
 use crate::cell_group::CellGroups;
-use crate::index::Index;
-use crate::prelude::GameState;
+use crate::index::{Index, IndexBitSet};
+use crate::prelude::{GameState, ValueBitSet};
+use log::{debug, Log};
+use std::io::Write;
+
+type PrintFn = fn(state: &GameState) -> ();
 
 pub struct DefaultSolver {
     groups: CellGroups,
+    print_fn: Option<PrintFn>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -27,12 +32,93 @@ impl Default for SmallestIndex {
 
 impl DefaultSolver {
     pub fn new(groups: CellGroups) -> Self {
-        Self { groups }
+        Self {
+            groups,
+            print_fn: None,
+        }
+    }
+
+    pub fn set_print_fn(&mut self, print_fn: PrintFn) {
+        self.print_fn = Some(print_fn);
     }
 
     pub fn solve(&self, state: GameState) -> Result<GameState, Unsolvable> {
         let mut stack = vec![state.clone()];
         'stack: while let Some(state) = stack.pop() {
+            debug!("Taking state from stack ...");
+            self.print_state(&state);
+
+            if state.is_solved(&self.groups) {
+                return Ok(state);
+            }
+
+            // Early exit the branch if needed.
+            if !state.is_consistent(&self.groups) {
+                debug!("Branch is inconsistent - ignoring");
+                continue;
+            }
+
+            'solving: loop {
+                match self.play_lonely_singles(&state) {
+                    Err(_) => {
+                        // continue with previous stack frame
+                        continue;
+                    }
+                    Ok(_) => {
+                        if !state.is_consistent(&self.groups) {
+                            debug!(
+                                "Lonely singles resulted in inconsistent state - ignoring branch"
+                            );
+                            self.print_state(&state);
+                            continue 'stack;
+                        }
+
+                        // always continue.
+                    }
+                }
+
+                match self.play_hidden_singles(&state) {
+                    Err(_) => {
+                        // continue with previous stack frame
+                        continue;
+                    }
+                    Ok(applied) => {
+                        if !state.is_consistent(&self.groups) {
+                            debug!(
+                                "Hidden singles resulted in inconsistent state - ignoring branch"
+                            );
+                            self.print_state(&state);
+                            continue 'stack;
+                        }
+
+                        if applied {
+                            continue 'solving;
+                        }
+                    }
+                }
+
+                match self.play_naked_twins(&state) {
+                    Err(_) => {
+                        // continue with previous stack frame
+                        continue;
+                    }
+                    Ok(applied) => {
+                        if !state.is_consistent(&self.groups) {
+                            debug!("Naked twins resulted in inconsistent state - ignoring branch");
+                            self.print_state(&state);
+                            continue 'stack;
+                        }
+
+                        if applied {
+                            continue 'solving;
+                        }
+                    }
+                }
+
+                // No more strategies.
+                break;
+            }
+
             if state.is_solved(&self.groups) {
                 return Ok(state);
             }
@@ -54,6 +140,11 @@ impl DefaultSolver {
             let fork_value = fork_cell.iter_candidates().next().unwrap();
 
             // Fork the board.
+            debug!(
+                "Forking state at {index:?} with value {value:?}",
+                index = fork_index,
+                value = fork_value
+            );
             let forked = state.clone();
             forked.place_at_index(fork_index, fork_value, &self.groups);
 
@@ -65,10 +156,176 @@ impl DefaultSolver {
             // candidates next. If it is inconsistent, skip it.
             if forked.is_consistent(&self.groups) {
                 stack.push(forked);
+            } else {
+                debug!("Forked state is inconsistent - ignoring.");
             }
         }
 
         Err(Unsolvable {})
+    }
+
+    /// Identifies and realizes naked twins.
+    ///
+    /// ## Example
+    /// A naked twin is a pair of cells that share the same values.
+    ///
+    /// Given three cells with the values `3 5`, `3 4` and `3 4`,
+    /// `3 4` are the naked twins. Since they must appear in the last two
+    /// cells, the `3` can be removed from the first cell.
+    fn play_lonely_singles(&self, state: &GameState) -> Result<bool, InvalidGameState> {
+        let mut observed_singles = IndexBitSet::empty();
+        let mut removed_some = false;
+
+        for index_under_test in (0..81).map(Index::new) {
+            if !observed_singles.try_insert(index_under_test) {
+                continue;
+            }
+
+            // Only consider cells that have exactly one value.
+            let cell_under_test = state.get_at_index(index_under_test);
+            if !cell_under_test.is_solved() {
+                continue;
+            }
+
+            // Find all possible twin candidates.
+            for index in self.groups.get_at_index(index_under_test).unwrap().iter() {
+                if index == index_under_test {
+                    continue;
+                }
+
+                let cell = state.get_at_index(index);
+                if cell.len() != 2 {
+                    continue;
+                }
+
+                if cell.as_bitset().contains_set(cell_under_test.as_bitset()) {
+                    debug!(
+                        "Removing lonely single {value:?} at {index:?} (from {iut:?})",
+                        value = cell_under_test.as_bitset(),
+                        index = index,
+                        iut = index_under_test
+                    );
+                    removed_some = true;
+                }
+
+                state.forget_many_at_index(index, cell_under_test.as_bitset());
+            }
+        }
+
+        return Ok(removed_some);
+    }
+
+    /// Identifies and realizes hidden singles.
+    ///
+    /// ## Example
+    /// A single is a value that does not appear in any other cell.
+    /// It is hidden when it appears along other values.
+    ///
+    /// Given two cells with the values `3 4` and `3 4 7`,
+    /// `7` is the hidden single. Since it only appears in the second
+    /// cell, it must be placed there (resulting in a "naked twin" pair of `3 4`).
+    fn play_hidden_singles(&self, state: &GameState) -> Result<bool, InvalidGameState> {
+        Ok(false)
+    }
+
+    /// Identifies and realizes naked twins.
+    ///
+    /// ## Example
+    /// A naked twin is a pair of cells that share the same values.
+    ///
+    /// Given three cells with the values `3 5`, `3 4` and `3 4`,
+    /// `3 4` are the naked twins. Since they must appear in the last two
+    /// cells, the `3` can be removed from the first cell.
+    fn play_naked_twins(&self, state: &GameState) -> Result<bool, InvalidGameState> {
+        let mut twins_to_remove = Vec::default();
+        let mut observed_twins = IndexBitSet::empty();
+
+        for index_under_test in (0..81).map(Index::new) {
+            if !observed_twins.try_insert(index_under_test) {
+                continue;
+            }
+
+            // Only consider cells that have two possible candidates.
+            let cell_under_test = state.get_at_index(index_under_test);
+            if cell_under_test.len() != 2 {
+                continue;
+            }
+
+            let mut possible_twins = Vec::default();
+
+            // Find all possible twin candidates.
+            for index in self.groups.get_at_index(index_under_test).unwrap().iter() {
+                if observed_twins.contains(index) {
+                    continue;
+                }
+
+                let cell = state.get_at_index(index);
+                if cell.len() != 2 {
+                    continue;
+                }
+
+                if cell.as_bitset().eq(cell_under_test.as_bitset()) {
+                    possible_twins.push(cell.into_indexed(index));
+                }
+            }
+
+            // At least one other cell is required for a twin pair.
+            if possible_twins.len() < 1 {
+                continue;
+            }
+
+            // More than two "twins" are an error.
+            if possible_twins.len() > 1 {
+                return Err(InvalidGameState {});
+            }
+
+            debug_assert_eq!(possible_twins.len(), 1);
+            let other_twin = possible_twins.iter().next().unwrap();
+
+            // Eliminate twin values in other cells.
+            observed_twins
+                .insert(index_under_test)
+                .insert(other_twin.index);
+
+            debug!(
+                "Twin pair detected at {a:?} and {b:?}: {values:?}",
+                a = index_under_test.min(other_twin.index),
+                b = index_under_test.max(other_twin.index),
+                values = other_twin.as_bitset()
+            );
+            twins_to_remove.push(TwinPair {
+                smaller: index_under_test.min(other_twin.index),
+                larger: index_under_test.max(other_twin.index),
+                values: other_twin.as_bitset().clone(),
+            });
+        }
+
+        if twins_to_remove.is_empty() {
+            return Ok(false);
+        }
+
+        // Iterate the detected twins, find their groups and eliminate the values.
+        for twin in twins_to_remove.into_iter() {
+            // The choice of the smaller or larger index here doesn't matter as they
+            // are in the same group.
+            for index in self
+                .groups
+                .get_at_index(twin.smaller)
+                .unwrap()
+                .iter()
+                .filter(|&x| x != twin.smaller && x != twin.larger)
+            {
+                state.forget_many_at_index(index, &twin.values);
+            }
+        }
+
+        return Ok(true);
+
+        struct TwinPair {
+            smaller: Index,
+            larger: Index,
+            values: ValueBitSet,
+        }
     }
 
     fn pick_index_to_fork_from(&self, state: &GameState) -> Option<Index> {
@@ -76,10 +333,10 @@ impl DefaultSolver {
         // Within that, identify the cell with the fewest options in that group.
         let mut smallest = SmallestIndex::default();
 
-        for i in 0..81 {
+        for index_under_test in (0..81).map(Index::new) {
             let mut group_size = 0;
             let mut group_smallest = SmallestIndex::default();
-            for index in self.groups.get_at_index(Index::new(i)).unwrap().iter() {
+            for index in self.groups.get_at_index(index_under_test).unwrap().iter() {
                 let index_size = state.get_at_index(index).len();
 
                 // Ignore solved or invalid cells.
@@ -112,4 +369,17 @@ impl DefaultSolver {
             None
         }
     }
+
+    fn print_state(&self, state: &GameState) {
+        if !log::log_enabled!(log::Level::Debug) {
+            return;
+        }
+        if let Some(print_fn) = self.print_fn {
+            print_fn(state);
+        }
+    }
 }
+
+#[derive(Debug, thiserror::Error)]
+#[error("An invalid game state was reached")]
+struct InvalidGameState {}

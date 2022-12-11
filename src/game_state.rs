@@ -2,7 +2,7 @@ use crate::cell_group::CellGroups;
 use crate::game_cell::GameCell;
 use crate::index::{Index, IndexBitSet};
 use crate::prelude::Coordinate;
-use crate::value::Value;
+use crate::value::{Value, ValueBitSet};
 use std::cell::Cell;
 use std::mem::MaybeUninit;
 
@@ -67,9 +67,7 @@ impl GameState {
             }
 
             let peer = self.cell_at_index(peer_index);
-            let mut cell = peer.get();
-            cell.remove(value);
-            peer.set(cell);
+            peer.set(peer.get().without_value(value));
         }
 
         self
@@ -95,6 +93,15 @@ impl GameState {
     pub fn forget_at_index(&self, index: Index, value: Value) -> &Self {
         let cell = self.cell_at_index(index);
         cell.set(cell.get().without_value(value));
+        self
+    }
+
+    /// Forgets a value at the specified cell. No changes will be propagated,
+    /// but the cell will be treated as if the value was never an option.
+    #[inline]
+    pub fn forget_many_at_index(&self, index: Index, values: &ValueBitSet) -> &Self {
+        let cell = self.cell_at_index(index);
+        cell.set(cell.get().without_values(values));
         self
     }
 
