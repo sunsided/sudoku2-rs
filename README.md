@@ -17,7 +17,11 @@ For reference, here's an example puzzle from the Wikipedia [Sudoku](https://en.w
 |-------------------------|---------------------------|
 | ![](.readme/puzzle.png) | ![](.readme/solution.png) |
 
-The solver's output is shown below.
+The solver's output is shown below. To run, execute:
+
+```bash
+$ RUST_LOG=debug cargo run --release --example solver -- --sudoku
+```
 
 ### Cell groups
 
@@ -135,7 +139,11 @@ For reference, here's an example Nonomino from the Wikipedia [Sudoku](https://en
 |---------------------------|------------------------------------|
 | ![](.readme/nonomino.png) | ![](.readme/nonomino-solution.png) |
 
-The solver's output is shown below.
+The solver's output is shown below. To run, execute:
+
+```bash
+$ RUST_LOG=debug cargo run --release --example solver -- --nonomino
+```
 
 ### Cell groups
 
@@ -246,6 +254,12 @@ The solver's output is shown below.
 ```
 
 ## Hypersudoku example
+
+A Hypersudoku example. To run it, execute:
+
+```bash
+$ RUST_LOG=debug cargo run --release --example solver -- --hyper
+```
 
 ### Initial state
 

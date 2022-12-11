@@ -1,3 +1,4 @@
+use clap::{Arg, ArgGroup, Command};
 use std::time::Instant;
 use sudoku2::prelude::*;
 use sudoku2::visualization::{ascii::print_game_state, PrintAscii};
@@ -8,7 +9,16 @@ fn main() {
         .target(env_logger::Target::Stdout)
         .init();
 
-    let game = sudoku2::example_games::sudoku::example_sudoku();
+    let matches = build_command().get_matches();
+    let game = if matches.get_flag("normal") {
+        sudoku2::example_games::sudoku::example_sudoku()
+    } else if matches.get_flag("nonomino") {
+        sudoku2::example_games::nonomino::example_nonomino()
+    } else if matches.get_flag("hypersudoku") {
+        sudoku2::example_games::hypersudoku::example_hypersudoku()
+    } else {
+        sudoku2::example_games::sudoku::example_sudoku()
+    };
 
     println!("Cell groups:");
     game.print_cell_groups();
@@ -49,4 +59,33 @@ fn main() {
         "Search terminated after {} s.",
         duration.subsec_micros() as f64 * 1e-6
     );
+}
+
+pub fn build_command() -> Command {
+    let command = Command::new("Sudoku Solver Example")
+        .version("0.1.0")
+        .author("Markus Mayer")
+        .arg(
+            Arg::new("normal")
+                .long("sudoku")
+                .help("Solve a regular Sudoku")
+                .action(clap::ArgAction::SetTrue)
+                .group("type"),
+        )
+        .arg(
+            Arg::new("nonomino")
+                .long("nonomino")
+                .help("Solve a Nonomino-type game")
+                .action(clap::ArgAction::SetTrue)
+                .group("type"),
+        )
+        .arg(
+            Arg::new("hypersudoku")
+                .long("hyper")
+                .help("Solve a Hypersoduko-type game")
+                .action(clap::ArgAction::SetTrue)
+                .group("type"),
+        )
+        .group(ArgGroup::new("type"));
+    command
 }
