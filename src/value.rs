@@ -204,6 +204,15 @@ impl ValueBitSet {
             index: 1, // Zero is invalid!
         }
     }
+
+    /// Reduces this set to a single value.
+    ///
+    /// ## Returns
+    /// Returns [`Some`] value or [`None`] if this set encodes zero or more than one value.
+    pub fn as_single_value(&self) -> Option<Value> {
+        debug_assert!(self.len() == 1, "Option does not represent a single value");
+        self.iter().next() // TODO: Find a faster way.
+    }
 }
 
 impl From<&[u8]> for ValueBitSet {

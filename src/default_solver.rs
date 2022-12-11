@@ -63,7 +63,7 @@ impl DefaultSolver {
             }
 
             'solving: loop {
-                match self.play_lonely_singles(&state) {
+                match self.play_naked_singles(&state) {
                     Err(_) => {
                         // continue with previous stack frame
                         continue;
@@ -73,7 +73,7 @@ impl DefaultSolver {
                         {
                             if !state.is_consistent(&self.groups) {
                                 debug!(
-                                "Lonely singles resulted in inconsistent state - ignoring branch"
+                                "Naked singles resulted in inconsistent state - ignoring branch"
                             );
                                 self.print_state(&state);
                                 continue 'stack;
@@ -231,14 +231,7 @@ impl DefaultSolver {
         Err(Unsolvable(last_seen_state))
     }
 
-    /// Identifies and realizes naked twins.
-    ///
-    /// ## Example
-    /// A naked twin is a pair of cells that share the same values.
-    ///
-    /// Given three cells with the values `3 5`, `3 4` and `3 4`,
-    /// `3 4` are the naked twins. Since they must appear in the last two
-    /// cells, the `3` can be removed from the first cell.
+    /// Identifies and realizes naked singles.
     ///
     /// ## Notes
     /// Playing this strategy is required because other strategies may
@@ -246,7 +239,7 @@ impl DefaultSolver {
     /// however does not automatically manifest the move, i.e. the value
     /// is not propagated to the board. This strategy does just that: Identify
     /// singles and ensure they are correctly propagated.
-    fn play_lonely_singles(&self, state: &GameState) -> Result<bool, InvalidGameState> {
+    fn play_naked_singles(&self, state: &GameState) -> Result<bool, InvalidGameState> {
         let mut observed_singles = IndexBitSet::empty();
         let mut removed_some = false;
 
@@ -273,7 +266,7 @@ impl DefaultSolver {
                 let cell = state.get_at_index(index);
                 if cell.as_bitset().contains_all(cell_under_test.as_bitset()) {
                     debug!(
-                        "Removing lonely single {value:?} at {index:?} (from {iut:?})",
+                        "Removing naked single {value:?} at {index:?} (from {iut:?})",
                         value = cell_under_test.as_bitset(),
                         index = index,
                         iut = index_under_test
@@ -297,8 +290,48 @@ impl DefaultSolver {
     /// Given two cells with the values `3 4` and `3 4 7`,
     /// `7` is the hidden single. Since it only appears in the second
     /// cell, it must be placed there (resulting in a "naked twin" pair of `3 4`).
-    fn play_hidden_singles(&self, _state: &GameState) -> Result<bool, InvalidGameState> {
-        Ok(false)
+    fn play_hidden_singles(&self, state: &GameState) -> Result<bool, InvalidGameState> {
+        let mut applied_some = false;
+
+        for index_under_test in (0..81).map(Index::new) {
+            // Hidden singles "hide" behind more than one other
+            // possible value; we want to exclude impossible cells
+            // and those that are already solved.
+            let cell_under_test = state.get_at_index(index_under_test);
+            if cell_under_test.len() > 1 {
+                continue;
+            }
+
+            // By taking the intersection with each peer, we will isolate
+            // values that appear only in this cell and nowhere else.
+            let mut values = cell_under_test.as_bitset().clone();
+
+            // Find all peers candidates.
+            for index in self
+                .groups
+                .get_at_index(index_under_test, false)
+                .unwrap()
+                .iter()
+            {
+                debug_assert_ne!(index, index_under_test);
+                values.remove_many(state.get_at_index(index_under_test).as_bitset());
+            }
+
+            if values.len() == 1 {
+                applied_some = true;
+                let value = values.as_single_value().unwrap();
+
+                debug!(
+                    "Placing hidden single {value:?} at {iut:?}",
+                    value = value,
+                    iut = index_under_test
+                );
+
+                state.place_and_propagate_at_index(index_under_test, value, &self.groups);
+            }
+        }
+
+        Ok(applied_some)
     }
 
     /// Identifies and realizes naked twins.
