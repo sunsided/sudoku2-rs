@@ -213,7 +213,7 @@ impl DefaultSolver {
                 value = fork_value
             );
             let forked = state.clone();
-            forked.place_at_index(fork_index, fork_value, &self.groups);
+            forked.place_and_propagate_at_index(fork_index, fork_value, &self.groups);
 
             // In the current version of the board, simply forget the picked option.
             state.forget_at_index(fork_index, fork_value);

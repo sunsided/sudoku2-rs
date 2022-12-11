@@ -46,7 +46,12 @@ impl GameState {
 
     /// Places a value at the specified cell, propagating the changes through the board.
     #[inline]
-    pub fn place_at_index(&self, index: Index, value: Value, groups: &CellGroups) -> &Self {
+    pub fn place_and_propagate_at_index(
+        &self,
+        index: Index,
+        value: Value,
+        groups: &CellGroups,
+    ) -> &Self {
         let cell = self.cell_at_index(index);
 
         #[cfg(debug_assertions)]
@@ -81,15 +86,26 @@ impl GameState {
 
     /// Places a value at the specified cell, propagating the changes through the board.
     #[inline]
-    pub fn place_at_coord(&self, coord: Coordinate, value: Value, groups: &CellGroups) -> &Self {
-        self.place_at_index(coord.into(), value, groups);
+    pub fn place_and_propagate_at_coord(
+        &self,
+        coord: Coordinate,
+        value: Value,
+        groups: &CellGroups,
+    ) -> &Self {
+        self.place_and_propagate_at_index(coord.into(), value, groups);
         self
     }
 
     /// Places a value at the specified cell, propagating the changes through the board.
     #[inline]
-    pub fn place_at_xy(&self, x: u8, y: u8, value: Value, groups: &CellGroups) -> &Self {
-        self.place_at_coord(Coordinate::new(x, y), value, groups);
+    pub fn place_and_propagate_at_xy(
+        &self,
+        x: u8,
+        y: u8,
+        value: Value,
+        groups: &CellGroups,
+    ) -> &Self {
+        self.place_and_propagate_at_coord(Coordinate::new(x, y), value, groups);
         self
     }
 
