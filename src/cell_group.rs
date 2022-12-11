@@ -169,11 +169,8 @@ impl CellGroups {
         mode: CollectIndexes,
     ) -> Result<IndexBitSet, NoMatchingGroup> {
         let mut set = IndexBitSet::empty();
-
-        for group in self.groups.iter() {
-            if group.contains(index) {
-                set.union(&group.indexes);
-            }
+        for group in self.groups.iter().filter(|&g| g.contains(index)) {
+            set.union(&group.indexes);
         }
 
         match mode {
@@ -205,13 +202,12 @@ impl CellGroups {
     }
 
     pub fn get_groups_at_index(&self, index: Index) -> Result<Vec<CellGroup>, NoMatchingGroup> {
-        let mut set = Vec::default();
-
-        for group in self.groups.iter() {
-            if group.contains(index) {
-                set.push(group.clone());
-            }
-        }
+        let set: Vec<_> = self
+            .groups
+            .iter()
+            .filter(|&g| g.contains(index))
+            .cloned()
+            .collect();
 
         if set.is_empty() {
             Err(NoMatchingGroup {})
@@ -262,23 +258,27 @@ pub struct CellGroup {
 }
 
 impl CellGroup {
-    pub fn new(id: usize, group_type: CellGroupType) -> Self {
+    #[inline]
+    pub const fn new(id: usize, group_type: CellGroupType) -> Self {
         Self {
             id: Some(id),
             group_type,
-            indexes: IndexBitSet::default(),
+            indexes: IndexBitSet::empty(),
         }
     }
 
+    #[inline]
     pub const fn with_index(mut self, index: Index) -> Self {
         self.indexes = self.indexes.with_index(index);
         self
     }
 
+    #[inline]
     pub fn from_indexes<T: IntoIterator<Item = Index>>(indexes: T) -> Self {
         Self::default().with_indexes(indexes)
     }
 
+    #[inline]
     pub fn from_u8_slice<T: AsRef<[u8]>>(indexes: T) -> Self {
         Self::from_indexes(IndexBitSet::from_u8_slice(indexes))
     }
@@ -290,11 +290,13 @@ impl CellGroup {
         self
     }
 
+    #[inline]
     pub fn with_type(mut self, cell_type: CellGroupType) -> Self {
         self.group_type = cell_type;
         self
     }
 
+    #[inline]
     pub fn add_index(&mut self, index: Index) -> &mut Self {
         self.indexes = self.indexes.with_index(index);
         self
