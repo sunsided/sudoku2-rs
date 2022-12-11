@@ -262,10 +262,13 @@ impl DefaultSolver {
             }
 
             // Find all peers candidates.
-            for index in self.groups.get_at_index(index_under_test).unwrap().iter() {
-                if index == index_under_test {
-                    continue;
-                }
+            for index in self
+                .groups
+                .get_at_index(index_under_test, false)
+                .unwrap()
+                .iter()
+            {
+                debug_assert_ne!(index, index_under_test);
 
                 let cell = state.get_at_index(index);
                 if cell.as_bitset().contains_all(cell_under_test.as_bitset()) {
@@ -422,7 +425,12 @@ impl DefaultSolver {
         for index_under_test in Index::range() {
             let mut group_size = 0;
             let mut group_smallest = SmallestIndex::default();
-            for index in self.groups.get_at_index(index_under_test).unwrap().iter() {
+            for index in self
+                .groups
+                .get_at_index(index_under_test, true)
+                .unwrap()
+                .iter()
+            {
                 let index_size = state.get_at_index(index).len();
 
                 // Ignore solved or invalid cells.

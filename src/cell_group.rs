@@ -109,23 +109,40 @@ impl CellGroups {
     }
 
     #[inline]
-    pub fn get_at_xy(&self, x: u8, y: u8) -> Result<IndexBitSet, NoMatchingGroup> {
+    pub fn get_at_xy(
+        &self,
+        x: u8,
+        y: u8,
+        include_self: bool,
+    ) -> Result<IndexBitSet, NoMatchingGroup> {
         debug_assert!(x <= 9 && y <= 9);
-        self.get_at_coord(Coordinate::new(x, y))
+        self.get_at_coord(Coordinate::new(x, y), include_self)
     }
 
     #[inline]
-    pub fn get_at_coord(&self, coord: Coordinate) -> Result<IndexBitSet, NoMatchingGroup> {
-        self.get_at_index(coord.into())
+    pub fn get_at_coord(
+        &self,
+        coord: Coordinate,
+        include_self: bool,
+    ) -> Result<IndexBitSet, NoMatchingGroup> {
+        self.get_at_index(coord.into(), include_self)
     }
 
-    pub fn get_at_index(&self, index: Index) -> Result<IndexBitSet, NoMatchingGroup> {
+    pub fn get_at_index(
+        &self,
+        index: Index,
+        include_self: bool,
+    ) -> Result<IndexBitSet, NoMatchingGroup> {
         let mut set = IndexBitSet::empty();
 
         for group in self.groups.iter() {
             if group.contains(index) {
                 set.union(&group.indexes);
             }
+        }
+
+        if !include_self {
+            set.remove(index);
         }
 
         if set.is_empty() {
