@@ -2,7 +2,7 @@ use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::InvalidGameState;
 use crate::index::Index;
 use crate::prelude::GameState;
-use crate::strategies::{HiddenSingles, NakedSingles, NakedTwins, Strategy};
+use crate::strategies::{HiddenSingles, NakedSingles, NakedTwins, Strategy, StrategyResult};
 use log::debug;
 
 type PrintFn = fn(state: &GameState) -> ();
@@ -10,6 +10,7 @@ type PrintFn = fn(state: &GameState) -> ();
 pub struct DefaultSolver {
     groups: CellGroups,
     print_fn: Option<PrintFn>,
+    strategies: Vec<Box<dyn Strategy>>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -33,9 +34,22 @@ impl Default for SmallestIndex {
 
 impl DefaultSolver {
     pub fn new<G: AsRef<CellGroups>>(groups: G) -> Self {
+        let strategies: Vec<Box<dyn Strategy>> = vec![
+            Box::new(NakedSingles::default()),
+            Box::new(HiddenSingles::new(CellGroupType::Custom)),
+            Box::new(HiddenSingles::new(CellGroupType::StandardRow)),
+            Box::new(HiddenSingles::new(CellGroupType::StandardColumn)),
+            Box::new(HiddenSingles::new(CellGroupType::StandardBlock)),
+            Box::new(NakedTwins::new(CellGroupType::Custom)),
+            Box::new(NakedTwins::new(CellGroupType::StandardRow)),
+            Box::new(NakedTwins::new(CellGroupType::StandardColumn)),
+            Box::new(NakedTwins::new(CellGroupType::StandardBlock)),
+        ];
+
         Self {
             groups: groups.as_ref().clone(),
             print_fn: None,
+            strategies,
         }
     }
 
@@ -120,180 +134,35 @@ impl DefaultSolver {
     /// Applies different strategies for solving the board without branching.
     fn apply_strategies(&self, state: &GameState) -> Result<(), InvalidGameState> {
         'solving: loop {
-            match self.play_naked_singles(&state) {
-                Err(e) => return Err(e),
-                Ok(_) => {
-                    #[cfg(debug_assertions)]
-                    {
-                        if !state.is_consistent(&self.groups) {
-                            debug!(
-                                "Naked singles resulted in inconsistent state - ignoring branch"
-                            );
-                            self.print_state(&state);
-                            return Err(InvalidGameState {});
-                        }
-                    }
-
-                    // always continue.
-                }
-            }
-
-            match self.play_hidden_singles_in_group(&state, CellGroupType::StandardColumn) {
-                Err(e) => return Err(e),
-                Ok(applied) => {
-                    #[cfg(debug_assertions)]
-                    {
-                        if !state.is_consistent(&self.groups) {
-                            debug!(
-                                "Hidden singles in standard columns resulted in inconsistent state - ignoring branch"
-                            );
-                            self.print_state(&state);
-                            return Err(InvalidGameState {});
-                        }
-                    }
-
-                    if applied {
-                        continue 'solving;
-                    }
-                }
-            }
-
-            match self.play_hidden_singles_in_group(&state, CellGroupType::StandardRow) {
-                Err(e) => return Err(e),
-                Ok(applied) => {
-                    #[cfg(debug_assertions)]
-                    {
-                        if !state.is_consistent(&self.groups) {
-                            debug!(
-                                "Hidden singles in standard rows resulted in inconsistent state - ignoring branch"
-                            );
-                            self.print_state(&state);
-                            return Err(InvalidGameState {});
-                        }
-                    }
-
-                    if applied {
-                        continue 'solving;
-                    }
-                }
-            }
-
-            match self.play_hidden_singles_in_group(&state, CellGroupType::StandardBlock) {
-                Err(e) => return Err(e),
-                Ok(applied) => {
-                    #[cfg(debug_assertions)]
-                    {
-                        if !state.is_consistent(&self.groups) {
-                            debug!(
-                                "Hidden singles in standard blocks resulted in inconsistent state - ignoring branch"
-                            );
-                            self.print_state(&state);
-                            return Err(InvalidGameState {});
-                        }
-                    }
-
-                    if applied {
-                        continue 'solving;
-                    }
-                }
-            }
-
-            match self.play_hidden_singles_in_group(&state, CellGroupType::Custom) {
-                Err(e) => return Err(e),
-                Ok(applied) => {
-                    #[cfg(debug_assertions)]
-                    {
-                        if !state.is_consistent(&self.groups) {
-                            debug!(
-                                "Hidden singles in custom groups resulted in inconsistent state - ignoring branch"
-                            );
-                            self.print_state(&state);
-                            return Err(InvalidGameState {});
-                        }
-                    }
-
-                    if applied {
-                        continue 'solving;
-                    }
-                }
-            }
-
-            match self.play_naked_twins_in_group(&state, CellGroupType::StandardColumn) {
-                Err(e) => return Err(e),
-                Ok(applied) => {
-                    #[cfg(debug_assertions)]
-                    {
-                        if !state.is_consistent(&self.groups) {
-                            debug!(
-                                    "Naked twins in standard columns resulted in inconsistent state - ignoring branch"
+            'next_strategy: for strategy in self.strategies.iter() {
+                match strategy.apply(&state, &self.groups) {
+                    Err(e) => return Err(e),
+                    Ok(outcome) => {
+                        #[cfg(debug_assertions)]
+                        {
+                            if !state.is_consistent(&self.groups) {
+                                debug!(
+                                    "{strategy:?} resulted in inconsistent state - ignoring branch",
+                                    strategy = strategy
                                 );
-                            self.print_state(&state);
-                            return Err(InvalidGameState {});
+                                self.print_state(&state);
+                                return Err(InvalidGameState {});
+                            }
                         }
-                    }
 
-                    if applied {
-                        continue 'solving;
-                    }
-                }
-            }
-
-            match self.play_naked_twins_in_group(&state, CellGroupType::StandardRow) {
-                Err(e) => return Err(e),
-                Ok(applied) => {
-                    #[cfg(debug_assertions)]
-                    {
-                        if !state.is_consistent(&self.groups) {
-                            debug!(
-                                    "Naked twins in standard rows resulted in inconsistent state - ignoring branch"
-                                );
-                            self.print_state(&state);
-                            return Err(InvalidGameState {});
+                        // Some strategies do not require a restart.
+                        if strategy.always_continue() {
+                            continue 'next_strategy;
                         }
-                    }
 
-                    if applied {
-                        continue 'solving;
-                    }
-                }
-            }
-
-            match self.play_naked_twins_in_group(&state, CellGroupType::StandardBlock) {
-                Err(e) => return Err(e),
-                Ok(applied) => {
-                    #[cfg(debug_assertions)]
-                    {
-                        if !state.is_consistent(&self.groups) {
-                            debug!(
-                                    "Naked twins in standard blocks resulted in inconsistent state - ignoring branch"
-                                );
-                            self.print_state(&state);
-                            return Err(InvalidGameState {});
+                        // Assuming that strategies are ordered by complexity,
+                        // restarting with the easiest one should result in
+                        // fastest gains. Because of that, when changes were applied
+                        // we start over until all strategies report no change.
+                        match outcome {
+                            StrategyResult::AppliedChange => continue 'solving,
+                            StrategyResult::NoChange => continue 'next_strategy,
                         }
-                    }
-
-                    if applied {
-                        continue 'solving;
-                    }
-                }
-            }
-
-            match self.play_naked_twins_in_group(&state, CellGroupType::Custom) {
-                Err(e) => return Err(e),
-                Ok(applied) => {
-                    #[cfg(debug_assertions)]
-                    {
-                        if !state.is_consistent(&self.groups) {
-                            debug!(
-                                    "Naked twins in custom groups resulted in inconsistent state - ignoring branch"
-                                );
-                            self.print_state(&state);
-                            return Err(InvalidGameState {});
-                        }
-                    }
-
-                    if applied {
-                        continue 'solving;
                     }
                 }
             }
@@ -307,51 +176,6 @@ impl DefaultSolver {
         } else {
             return Err(InvalidGameState {});
         }
-    }
-
-    /// Identifies and realizes naked singles.
-    ///
-    /// ## Notes
-    /// Playing this strategy is required because other strategies may
-    /// collapse the candidate space of a cell into a singular value. This
-    /// however does not automatically manifest the move, i.e. the value
-    /// is not propagated to the board. This strategy does just that: Identify
-    /// singles and ensure they are correctly propagated.
-    fn play_naked_singles(&self, state: &GameState) -> Result<bool, InvalidGameState> {
-        NakedSingles::default().apply(state, &self.groups)
-    }
-
-    /// Identifies and realizes hidden singles.
-    ///
-    /// ## Example
-    /// A single is a value that does not appear in any other cell.
-    /// It is hidden when it appears along other values.
-    ///
-    /// Given two cells with the values `3 4` and `3 4 7`,
-    /// `7` is the hidden single. Since it only appears in the second
-    /// cell, it must be placed there (resulting in a "naked twin" pair of `3 4`).
-    fn play_hidden_singles_in_group(
-        &self,
-        state: &GameState,
-        group_type: CellGroupType,
-    ) -> Result<bool, InvalidGameState> {
-        HiddenSingles::new(group_type).apply(state, &self.groups)
-    }
-
-    /// Identifies and realizes naked twins.
-    ///
-    /// ## Example
-    /// A naked twin is a pair of cells that share the same values.
-    ///
-    /// Given three cells with the values `3 5`, `3 4` and `3 4`,
-    /// `3 4` are the naked twins. Since they must appear in the last two
-    /// cells, the `3` can be removed from the first cell.
-    fn play_naked_twins_in_group(
-        &self,
-        state: &GameState,
-        group_type: CellGroupType,
-    ) -> Result<bool, InvalidGameState> {
-        NakedTwins::new(group_type).apply(state, &self.groups)
     }
 
     fn pick_index_to_fork_from(&self, state: &GameState) -> Option<Index> {

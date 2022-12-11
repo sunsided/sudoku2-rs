@@ -1,9 +1,10 @@
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::{Index, IndexBitSet};
-use crate::strategies::Strategy;
+use crate::strategies::{Strategy, StrategyResult};
 use crate::value::ValueBitSet;
 use log::debug;
+use std::fmt::{Debug, Formatter};
 
 /// Identifies and realizes naked twins.
 ///
@@ -24,12 +25,22 @@ impl NakedTwins {
     }
 }
 
+impl Debug for NakedTwins {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Naked twins in {group:?}", group = self.group_type)
+    }
+}
+
 impl Strategy for NakedTwins {
     fn always_continue(&self) -> bool {
         false
     }
 
-    fn apply(&self, state: &GameState, groups: &CellGroups) -> Result<bool, InvalidGameState> {
+    fn apply(
+        &self,
+        state: &GameState,
+        groups: &CellGroups,
+    ) -> Result<StrategyResult, InvalidGameState> {
         let mut twins_to_remove = Vec::default();
         let mut observed_twins = IndexBitSet::empty();
 
@@ -102,7 +113,7 @@ impl Strategy for NakedTwins {
         }
 
         if twins_to_remove.is_empty() {
-            return Ok(false);
+            return Ok(StrategyResult::NoChange);
         }
 
         // Iterate the detected twins, find their groups and eliminate the values.
@@ -122,7 +133,11 @@ impl Strategy for NakedTwins {
             }
         }
 
-        return Ok(applied_some);
+        if applied_some {
+            Ok(StrategyResult::AppliedChange)
+        } else {
+            Ok(StrategyResult::NoChange)
+        }
     }
 }
 

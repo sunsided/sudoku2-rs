@@ -1,8 +1,9 @@
 use crate::cell_group::CellGroups;
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::{Index, IndexBitSet};
-use crate::strategies::Strategy;
+use crate::strategies::{Strategy, StrategyResult};
 use log::debug;
+use std::fmt::{Debug, Formatter};
 
 /// Identifies and realizes naked singles.
 ///
@@ -15,12 +16,22 @@ use log::debug;
 #[derive(Default)]
 pub struct NakedSingles {}
 
+impl Debug for NakedSingles {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Naked singles")
+    }
+}
+
 impl Strategy for NakedSingles {
     fn always_continue(&self) -> bool {
         true
     }
 
-    fn apply(&self, state: &GameState, groups: &CellGroups) -> Result<bool, InvalidGameState> {
+    fn apply(
+        &self,
+        state: &GameState,
+        groups: &CellGroups,
+    ) -> Result<StrategyResult, InvalidGameState> {
         let mut observed_singles = IndexBitSet::empty();
         let mut removed_some = false;
 
@@ -54,6 +65,10 @@ impl Strategy for NakedSingles {
             }
         }
 
-        return Ok(removed_some);
+        if removed_some {
+            Ok(StrategyResult::AppliedChange)
+        } else {
+            Ok(StrategyResult::NoChange)
+        }
     }
 }

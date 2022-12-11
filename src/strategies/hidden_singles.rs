@@ -1,8 +1,9 @@
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::Index;
-use crate::strategies::Strategy;
+use crate::strategies::{Strategy, StrategyResult};
 use log::debug;
+use std::fmt::{Debug, Formatter};
 
 /// Identifies and realizes hidden singles.
 ///
@@ -23,12 +24,22 @@ impl HiddenSingles {
     }
 }
 
+impl Debug for HiddenSingles {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Hidden singles in {group:?}", group = self.group_type)
+    }
+}
+
 impl Strategy for HiddenSingles {
     fn always_continue(&self) -> bool {
         false
     }
 
-    fn apply(&self, state: &GameState, groups: &CellGroups) -> Result<bool, InvalidGameState> {
+    fn apply(
+        &self,
+        state: &GameState,
+        groups: &CellGroups,
+    ) -> Result<StrategyResult, InvalidGameState> {
         let mut applied_some = false;
 
         for index_under_test in (0..81).map(Index::new) {
@@ -71,6 +82,10 @@ impl Strategy for HiddenSingles {
             }
         }
 
-        Ok(applied_some)
+        if applied_some {
+            Ok(StrategyResult::AppliedChange)
+        } else {
+            Ok(StrategyResult::NoChange)
+        }
     }
 }
