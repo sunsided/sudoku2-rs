@@ -23,21 +23,22 @@ fn main() {
 
     let now = Instant::now();
     let result = solver.solve(&game.initial_state);
-
-    println!(
-        "Search terminated after {} s.",
-        now.elapsed().subsec_micros() as f64 * 1e-6
-    );
+    let duration = now.elapsed();
 
     match result {
         Ok(solution) => {
-            println!("Best solution:");
+            println!("Found solution:");
             print_game_state(&solution);
         }
         Err(Unsolvable(state)) => {
-            eprintln!("Failed to find a solution.");
-            println!("Best solution:");
+            println!("Last available state:");
             print_game_state(&state);
+            eprintln!("Failed to find a solution.");
         }
     }
+
+    println!(
+        "Search terminated after {} s.",
+        duration.subsec_micros() as f64 * 1e-6
+    );
 }
