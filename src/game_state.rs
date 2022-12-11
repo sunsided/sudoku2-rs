@@ -6,6 +6,10 @@ use crate::value::{IntoValueOptions, Value, ValueBitSet};
 use std::cell::Cell;
 use std::mem::MaybeUninit;
 
+#[derive(Debug, thiserror::Error)]
+#[error("An invalid game state was reached")]
+pub struct InvalidGameState {}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct GameState {
     cells: [Cell<GameCell>; 81],

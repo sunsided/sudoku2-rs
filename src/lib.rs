@@ -6,6 +6,7 @@ mod game;
 mod game_cell;
 mod game_state;
 mod index;
+mod strategies;
 mod value;
 pub mod visualization;
 

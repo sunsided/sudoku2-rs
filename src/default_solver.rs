@@ -1,6 +1,8 @@
 use crate::cell_group::{CellGroupType, CellGroups};
-use crate::index::{Index, IndexBitSet};
-use crate::prelude::{GameState, ValueBitSet};
+use crate::game_state::InvalidGameState;
+use crate::index::Index;
+use crate::prelude::GameState;
+use crate::strategies::{HiddenSingles, NakedSingles, NakedTwins, Strategy};
 use log::debug;
 
 type PrintFn = fn(state: &GameState) -> ();
@@ -316,45 +318,7 @@ impl DefaultSolver {
     /// is not propagated to the board. This strategy does just that: Identify
     /// singles and ensure they are correctly propagated.
     fn play_naked_singles(&self, state: &GameState) -> Result<bool, InvalidGameState> {
-        let mut observed_singles = IndexBitSet::empty();
-        let mut removed_some = false;
-
-        for index_under_test in Index::range() {
-            if !observed_singles.try_insert(index_under_test) {
-                continue;
-            }
-
-            // Only consider cells that have exactly one value.
-            let cell_under_test = state.get_at_index(index_under_test);
-            if !cell_under_test.is_solved() {
-                continue;
-            }
-
-            // Find all peers candidates.
-            for index in self
-                .groups
-                .get_at_index(index_under_test, false)
-                .unwrap()
-                .iter()
-            {
-                debug_assert_ne!(index, index_under_test);
-
-                let cell = state.get_at_index(index);
-                if cell.as_bitset().contains_all(cell_under_test.as_bitset()) {
-                    debug!(
-                        "Removing naked single {value:?} at {index:?} (single at {iut:?})",
-                        value = cell_under_test.as_bitset(),
-                        index = index,
-                        iut = index_under_test
-                    );
-                    removed_some = true;
-                }
-
-                state.forget_many_at_index(index, cell_under_test.as_bitset());
-            }
-        }
-
-        return Ok(removed_some);
+        NakedSingles::default().apply(state, &self.groups)
     }
 
     /// Identifies and realizes hidden singles.
@@ -371,50 +335,7 @@ impl DefaultSolver {
         state: &GameState,
         group_type: CellGroupType,
     ) -> Result<bool, InvalidGameState> {
-        let mut applied_some = false;
-
-        for index_under_test in (0..81).map(Index::new) {
-            // Hidden singles "hide" behind more than one other
-            // possible value; we want to exclude impossible cells
-            // and those that are already solved.
-            let cell_under_test = state.get_at_index(index_under_test);
-            if cell_under_test.len() <= 1 {
-                continue;
-            }
-
-            // By taking the intersection with each peer, we will isolate
-            // values that appear only in this cell and nowhere else.
-            let mut values = cell_under_test.as_bitset().clone();
-
-            // Find all peers candidates.
-            for index in self
-                .groups
-                .get_groups_at_index(index_under_test)
-                .unwrap()
-                .iter()
-                .filter(|g| g.group_type == group_type)
-                .flat_map(|g| g.iter_indexes())
-                .filter(|&i| i != index_under_test)
-            {
-                debug_assert_ne!(index, index_under_test);
-                values.remove_many(state.get_at_index(index).as_bitset());
-            }
-
-            if values.len() == 1 {
-                applied_some = true;
-                let value = values.as_single_value().unwrap();
-
-                debug!(
-                    "Placing hidden single {value:?} at {iut:?}",
-                    value = value,
-                    iut = index_under_test
-                );
-
-                state.place_and_propagate_at_index(index_under_test, value, &self.groups);
-            }
-        }
-
-        Ok(applied_some)
+        HiddenSingles::new(group_type).apply(state, &self.groups)
     }
 
     /// Identifies and realizes naked twins.
@@ -430,107 +351,7 @@ impl DefaultSolver {
         state: &GameState,
         group_type: CellGroupType,
     ) -> Result<bool, InvalidGameState> {
-        let mut twins_to_remove = Vec::default();
-        let mut observed_twins = IndexBitSet::empty();
-
-        for index_under_test in Index::range() {
-            if !observed_twins.try_insert(index_under_test) {
-                continue;
-            }
-
-            // Only consider cells that have two possible candidates.
-            let cell_under_test = state.get_at_index(index_under_test);
-            if cell_under_test.len() != 2 {
-                continue;
-            }
-
-            let mut possible_twins = Vec::default();
-
-            // Find all possible twin candidates.
-            for group in self
-                .groups
-                .get_groups_at_index(index_under_test)
-                .unwrap()
-                .iter()
-                .filter(|g| g.group_type == group_type)
-            {
-                for index in group.iter_indexes() {
-                    if observed_twins.contains(index) {
-                        continue;
-                    }
-
-                    let cell = state.get_at_index(index);
-                    if cell.len() != 2 {
-                        continue;
-                    }
-
-                    if cell.as_bitset().eq(cell_under_test.as_bitset()) {
-                        possible_twins.push(cell.into_indexed(index));
-                    }
-                }
-            }
-
-            // At least one other cell is required for a twin pair.
-            if possible_twins.len() < 1 {
-                continue;
-            }
-
-            // More than two "twins" are an error.
-            if possible_twins.len() > 1 {
-                return Err(InvalidGameState {});
-            }
-
-            debug_assert_eq!(possible_twins.len(), 1);
-            let other_twin = possible_twins.iter().next().unwrap();
-
-            // Eliminate twin values in other cells.
-            observed_twins
-                .insert(index_under_test)
-                .insert(other_twin.index);
-
-            debug!(
-                "Twin pair detected in {group_type:?} at {a:?} and {b:?}: {values:?}",
-                group_type = group_type,
-                a = index_under_test.min(other_twin.index),
-                b = index_under_test.max(other_twin.index),
-                values = other_twin.as_bitset()
-            );
-            twins_to_remove.push(TwinPair {
-                smaller: index_under_test.min(other_twin.index),
-                larger: index_under_test.max(other_twin.index),
-                values: other_twin.as_bitset().clone(),
-            });
-        }
-
-        if twins_to_remove.is_empty() {
-            return Ok(false);
-        }
-
-        // Iterate the detected twins, find their groups and eliminate the values.
-        let mut applied_some = false;
-        for twin in twins_to_remove.into_iter() {
-            // The choice of the smaller or larger index here doesn't matter as they
-            // are in the same group.
-            for index in self
-                .groups
-                .get_groups_at_index(twin.smaller)
-                .unwrap()
-                .iter()
-                .filter(|g| g.group_type == group_type)
-                .flat_map(|g| g.iter_indexes())
-                .filter(|&x| x != twin.smaller && x != twin.larger)
-            {
-                applied_some |= state.forget_many_at_index(index, &twin.values);
-            }
-        }
-
-        return Ok(applied_some);
-
-        struct TwinPair {
-            smaller: Index,
-            larger: Index,
-            values: ValueBitSet,
-        }
+        NakedTwins::new(group_type).apply(state, &self.groups)
     }
 
     fn pick_index_to_fork_from(&self, state: &GameState) -> Option<Index> {
@@ -589,10 +410,6 @@ impl DefaultSolver {
         }
     }
 }
-
-#[derive(Debug, thiserror::Error)]
-#[error("An invalid game state was reached")]
-struct InvalidGameState {}
 
 #[cfg(test)]
 mod tests {
