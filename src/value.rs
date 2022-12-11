@@ -197,16 +197,18 @@ impl ValueBitSet {
         (self.state & values.state) != 0
     }
 
+    #[inline]
     pub const fn len(&self) -> usize {
         let masked = self.state & Self::MASK;
-        let bits = masked.count_ones();
-        bits as _
+        masked.count_ones() as _
     }
 
+    #[inline]
     pub const fn is_empty(&self) -> bool {
         self.state & Self::MASK == 0
     }
 
+    #[inline]
     pub fn iter(&self) -> ValueBitSetIter {
         ValueBitSetIter {
             value: self,
@@ -218,6 +220,7 @@ impl ValueBitSet {
     ///
     /// ## Returns
     /// Returns [`Some`] value or [`None`] if this set encodes zero or more than one value.
+    #[inline]
     pub fn as_single_value(&self) -> Option<Value> {
         debug_assert!(self.len() == 1, "Option does not represent a single value");
         self.iter().next() // TODO: Find a faster way.
