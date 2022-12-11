@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use std::io::Write;
-use std::num::NonZeroU8;
 
 pub trait PrintAscii {
     fn print_game_state(&self);

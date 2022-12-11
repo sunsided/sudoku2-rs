@@ -11,6 +11,12 @@ pub struct GameState {
     cells: [Cell<GameCell>; 81],
 }
 
+impl AsRef<GameState> for &GameState {
+    fn as_ref(&self) -> &GameState {
+        self
+    }
+}
+
 impl GameState {
     pub fn new() -> Self {
         let mut cells: [MaybeUninit<Cell<GameCell>>; 81] =

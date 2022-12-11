@@ -437,7 +437,7 @@ mod tests {
             .with_value(b)
             .with_value(c);
         let remove = ValueBitSet::default().with_value(a).with_value(b);
-        bitset.remove_many(remove);
+        bitset.remove_many(&remove);
 
         assert!(!bitset.contains(a));
         assert!(!bitset.contains(b));

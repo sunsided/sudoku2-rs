@@ -8,6 +8,12 @@ pub struct CellGroups {
     groups: Vec<CellGroup>,
 }
 
+impl AsRef<CellGroups> for &CellGroups {
+    fn as_ref(&self) -> &CellGroups {
+        self
+    }
+}
+
 impl CellGroups {
     pub fn with_group(mut self, group: CellGroup) -> Self {
         self.add_group(group);

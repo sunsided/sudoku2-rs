@@ -1,5 +1,3 @@
-use std::io::Write;
-use std::num::NonZeroU8;
 use std::time::Instant;
 use sudoku2::prelude::*;
 use sudoku2::visualization::{ascii::print_game_state, PrintAscii};
@@ -20,11 +18,11 @@ fn main() {
 
     assert!(game.initial_state.is_consistent(&game.groups));
 
-    let mut solver = DefaultSolver::new(game.groups);
+    let mut solver = DefaultSolver::new(&game.groups);
     solver.set_print_fn(|state| print_game_state(state));
 
     let now = Instant::now();
-    let solved = solver.solve(game.initial_state).unwrap();
+    let solved = solver.solve(&game.initial_state).unwrap();
 
     println!(
         "Search terminated after {} s.",

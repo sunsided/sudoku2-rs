@@ -1,8 +1,7 @@
 use crate::cell_group::CellGroups;
 use crate::index::{Index, IndexBitSet};
 use crate::prelude::{GameState, ValueBitSet};
-use log::{debug, Log};
-use std::io::Write;
+use log::debug;
 
 type PrintFn = fn(state: &GameState) -> ();
 
@@ -31,9 +30,9 @@ impl Default for SmallestIndex {
 }
 
 impl DefaultSolver {
-    pub fn new(groups: CellGroups) -> Self {
+    pub fn new<G: AsRef<CellGroups>>(groups: G) -> Self {
         Self {
-            groups,
+            groups: groups.as_ref().clone(),
             print_fn: None,
         }
     }
@@ -42,8 +41,8 @@ impl DefaultSolver {
         self.print_fn = Some(print_fn);
     }
 
-    pub fn solve(&self, state: GameState) -> Result<GameState, Unsolvable> {
-        let mut stack = vec![state.clone()];
+    pub fn solve<S: AsRef<GameState>>(&self, state: S) -> Result<GameState, Unsolvable> {
+        let mut stack = vec![state.as_ref().clone()];
         'stack: while let Some(state) = stack.pop() {
             debug!("Taking state from stack ...");
             self.print_state(&state);
@@ -241,7 +240,7 @@ impl DefaultSolver {
     /// Given two cells with the values `3 4` and `3 4 7`,
     /// `7` is the hidden single. Since it only appears in the second
     /// cell, it must be placed there (resulting in a "naked twin" pair of `3 4`).
-    fn play_hidden_singles(&self, state: &GameState) -> Result<bool, InvalidGameState> {
+    fn play_hidden_singles(&self, _state: &GameState) -> Result<bool, InvalidGameState> {
         Ok(false)
     }
 
@@ -400,3 +399,20 @@ impl DefaultSolver {
 #[derive(Debug, thiserror::Error)]
 #[error("An invalid game state was reached")]
 struct InvalidGameState {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn solving_sudoku_works() {
+        let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+        let result = solver.solve(&game);
+        assert!(result.is_ok());
+
+        let solution = result.unwrap();
+        assert!(solution.is_consistent(&game.groups));
+        assert!(solution.is_solved(&game.groups));
+    }
+}
