@@ -14,31 +14,15 @@ use std::fmt::{Debug, Formatter};
 /// Given two cells with the values `3 4` and `3 4 7`,
 /// `7` is the hidden single. Since it only appears in the second
 /// cell, it must be placed there (resulting in a "naked twin" pair of `3 4`).
-pub struct HiddenSingles {
-    group_type: CellGroupType,
-}
+#[derive(Default)]
+pub struct HiddenSingles {}
 
 impl HiddenSingles {
-    pub fn new(group_type: CellGroupType) -> Self {
-        Self { group_type }
-    }
-}
-
-impl Debug for HiddenSingles {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Hidden singles in {group:?}", group = self.group_type)
-    }
-}
-
-impl Strategy for HiddenSingles {
-    fn always_continue(&self) -> bool {
-        false
-    }
-
-    fn apply(
+    fn apply_in_group(
         &self,
         state: &GameState,
         groups: &CellGroups,
+        group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut applied_some = false;
 
@@ -60,7 +44,7 @@ impl Strategy for HiddenSingles {
                 .get_groups_at_index(index_under_test)
                 .unwrap()
                 .iter()
-                .filter(|g| g.group_type == self.group_type)
+                .filter(|g| g.group_type == group_type)
                 .flat_map(|g| g.iter_indexes())
                 .filter(|&i| i != index_under_test)
             {
@@ -87,5 +71,30 @@ impl Strategy for HiddenSingles {
         } else {
             Ok(StrategyResult::NoChange)
         }
+    }
+}
+
+impl Debug for HiddenSingles {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Hidden singles")
+    }
+}
+
+impl Strategy for HiddenSingles {
+    fn always_continue(&self) -> bool {
+        false
+    }
+
+    fn apply(
+        &self,
+        state: &GameState,
+        groups: &CellGroups,
+    ) -> Result<StrategyResult, InvalidGameState> {
+        let mut result = StrategyResult::NoChange;
+        result |= self.apply_in_group(state, groups, CellGroupType::Custom)?;
+        result |= self.apply_in_group(state, groups, CellGroupType::StandardBlock)?;
+        result |= self.apply_in_group(state, groups, CellGroupType::StandardRow)?;
+        result |= self.apply_in_group(state, groups, CellGroupType::StandardColumn)?;
+        Ok(result)
     }
 }

@@ -15,31 +15,14 @@ use std::fmt::{Debug, Formatter};
 /// `3 4` are the naked twins. Since they must appear in the last two
 /// cells, the `3` can be removed from the first cell.
 #[derive(Default)]
-pub struct NakedTwins {
-    group_type: CellGroupType,
-}
+pub struct NakedTwins {}
 
 impl NakedTwins {
-    pub fn new(group_type: CellGroupType) -> Self {
-        Self { group_type }
-    }
-}
-
-impl Debug for NakedTwins {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Naked twins in {group:?}", group = self.group_type)
-    }
-}
-
-impl Strategy for NakedTwins {
-    fn always_continue(&self) -> bool {
-        false
-    }
-
-    fn apply(
+    fn apply_in_group(
         &self,
         state: &GameState,
         groups: &CellGroups,
+        group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut twins_to_remove = Vec::default();
         let mut observed_twins = IndexBitSet::empty();
@@ -62,7 +45,7 @@ impl Strategy for NakedTwins {
                 .get_groups_at_index(index_under_test)
                 .unwrap()
                 .iter()
-                .filter(|g| g.group_type == self.group_type)
+                .filter(|g| g.group_type == group_type)
             {
                 for index in group.iter_indexes() {
                     if observed_twins.contains(index) {
@@ -100,7 +83,7 @@ impl Strategy for NakedTwins {
 
             debug!(
                 "Twin pair detected in {group_type:?} at {a:?} and {b:?}: {values:?}",
-                group_type = self.group_type,
+                group_type = group_type,
                 a = index_under_test.min(other_twin.index),
                 b = index_under_test.max(other_twin.index),
                 values = other_twin.as_bitset()
@@ -125,7 +108,7 @@ impl Strategy for NakedTwins {
                 .get_groups_at_index(twin.smaller)
                 .unwrap()
                 .iter()
-                .filter(|g| g.group_type == self.group_type)
+                .filter(|g| g.group_type == group_type)
                 .flat_map(|g| g.iter_indexes())
                 .filter(|&x| x != twin.smaller && x != twin.larger)
             {
@@ -138,6 +121,31 @@ impl Strategy for NakedTwins {
         } else {
             Ok(StrategyResult::NoChange)
         }
+    }
+}
+
+impl Debug for NakedTwins {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Naked twins")
+    }
+}
+
+impl Strategy for NakedTwins {
+    fn always_continue(&self) -> bool {
+        false
+    }
+
+    fn apply(
+        &self,
+        state: &GameState,
+        groups: &CellGroups,
+    ) -> Result<StrategyResult, InvalidGameState> {
+        let mut result = StrategyResult::NoChange;
+        result |= self.apply_in_group(state, groups, CellGroupType::Custom)?;
+        result |= self.apply_in_group(state, groups, CellGroupType::StandardBlock)?;
+        result |= self.apply_in_group(state, groups, CellGroupType::StandardRow)?;
+        result |= self.apply_in_group(state, groups, CellGroupType::StandardColumn)?;
+        Ok(result)
     }
 }
 

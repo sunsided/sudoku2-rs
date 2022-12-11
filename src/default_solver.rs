@@ -1,4 +1,4 @@
-use crate::cell_group::{CellGroupType, CellGroups};
+use crate::cell_group::CellGroups;
 use crate::game_state::InvalidGameState;
 use crate::index::Index;
 use crate::prelude::GameState;
@@ -36,14 +36,8 @@ impl DefaultSolver {
     pub fn new<G: AsRef<CellGroups>>(groups: G) -> Self {
         let strategies: Vec<Box<dyn Strategy>> = vec![
             Box::new(NakedSingles::default()),
-            Box::new(HiddenSingles::new(CellGroupType::Custom)),
-            Box::new(HiddenSingles::new(CellGroupType::StandardRow)),
-            Box::new(HiddenSingles::new(CellGroupType::StandardColumn)),
-            Box::new(HiddenSingles::new(CellGroupType::StandardBlock)),
-            Box::new(NakedTwins::new(CellGroupType::Custom)),
-            Box::new(NakedTwins::new(CellGroupType::StandardRow)),
-            Box::new(NakedTwins::new(CellGroupType::StandardColumn)),
-            Box::new(NakedTwins::new(CellGroupType::StandardBlock)),
+            Box::new(HiddenSingles::default()),
+            Box::new(NakedTwins::default()),
         ];
 
         Self {
