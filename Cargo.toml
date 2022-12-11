@@ -10,10 +10,15 @@ license = "EUPL-1.2"
 name = "solver"
 path = "examples/solver.rs"
 
+[[bench]]
+name = "benchmark"
+harness = false
+
 [dependencies]
 log = "0.4.17"
 thiserror = "1.0.37"
 
 [dev-dependencies]
 clap = "4.0.29"
+criterion = "0.4.0"
 env_logger = "0.10.0"
