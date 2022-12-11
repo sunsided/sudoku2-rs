@@ -107,6 +107,52 @@ impl DefaultSolver {
                     }
                 }
 
+                match self.play_naked_twins(&state, CellGroupType::StandardColumn) {
+                    Err(_) => {
+                        // continue with previous stack frame
+                        continue;
+                    }
+                    Ok(applied) => {
+                        #[cfg(debug_assertions)]
+                        {
+                            if !state.is_consistent(&self.groups) {
+                                debug!(
+                                    "Naked twins on columns resulted in inconsistent state - ignoring branch"
+                                );
+                                self.print_state(&state);
+                                continue 'stack;
+                            }
+                        }
+
+                        if applied {
+                            continue 'solving;
+                        }
+                    }
+                }
+
+                match self.play_naked_twins(&state, CellGroupType::StandardRow) {
+                    Err(_) => {
+                        // continue with previous stack frame
+                        continue;
+                    }
+                    Ok(applied) => {
+                        #[cfg(debug_assertions)]
+                        {
+                            if !state.is_consistent(&self.groups) {
+                                debug!(
+                                    "Naked twins on rows resulted in inconsistent state - ignoring branch"
+                                );
+                                self.print_state(&state);
+                                continue 'stack;
+                            }
+                        }
+
+                        if applied {
+                            continue 'solving;
+                        }
+                    }
+                }
+
                 match self.play_naked_twins(&state, CellGroupType::StandardBlock) {
                     Err(_) => {
                         // continue with previous stack frame
@@ -117,7 +163,7 @@ impl DefaultSolver {
                         {
                             if !state.is_consistent(&self.groups) {
                                 debug!(
-                                    "Naked twins resulted in inconsistent state - ignoring branch"
+                                    "Naked twins on blocks resulted in inconsistent state - ignoring branch"
                                 );
                                 self.print_state(&state);
                                 continue 'stack;
@@ -321,7 +367,8 @@ impl DefaultSolver {
                 .insert(other_twin.index);
 
             debug!(
-                "Twin pair detected at {a:?} and {b:?}: {values:?}",
+                "Twin pair detected in {group_type:?} at {a:?} and {b:?}: {values:?}",
+                group_type = group_type,
                 a = index_under_test.min(other_twin.index),
                 b = index_under_test.max(other_twin.index),
                 values = other_twin.as_bitset()

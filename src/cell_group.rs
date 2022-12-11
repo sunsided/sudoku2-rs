@@ -1,5 +1,6 @@
 use crate::index::{Index, IndexBitSet, IndexBitSetIter};
 use crate::prelude::Coordinate;
+use std::fmt::{Debug, Formatter};
 use std::slice::Iter;
 
 /// The set of all cell groups relevant to a game.
@@ -177,12 +178,23 @@ pub struct OverlappingGroups {}
 #[error("No matching group was found")]
 pub struct NoMatchingGroup {}
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub enum CellGroupType {
     Custom,
     StandardBlock,
     StandardRow,
     StandardColumn,
+}
+
+impl Debug for CellGroupType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Custom => write!(f, "custom group"),
+            Self::StandardBlock => write!(f, "standard block"),
+            Self::StandardColumn => write!(f, "standard column"),
+            Self::StandardRow => write!(f, "standard row"),
+        }
+    }
 }
 
 impl Default for CellGroupType {
