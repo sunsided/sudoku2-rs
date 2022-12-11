@@ -221,9 +221,22 @@ impl ValueBitSet {
     /// ## Returns
     /// Returns [`Some`] value or [`None`] if this set encodes zero or more than one value.
     #[inline]
-    pub fn as_single_value(&self) -> Option<Value> {
-        debug_assert!(self.len() == 1, "Option does not represent a single value");
-        self.iter().next() // TODO: Find a faster way.
+    pub const fn as_single_value(&self) -> Option<Value> {
+        // Need to test here, will produce attempt to left shift with overflow otherwise.
+        if self.state == 0 {
+            return None;
+        }
+
+        let pow2 = self.state.trailing_zeros() as u16;
+
+        // Ensure that exactly one bit is set.
+        let test = (1u16 << pow2) & Self::MASK;
+        if self.state != test {
+            return None;
+        }
+
+        // Zero is disallowed, so we add one.
+        Some(unsafe { Value::new_unchecked(pow2 as u8 + 1) })
     }
 }
 
@@ -506,5 +519,23 @@ mod tests {
 
         assert!(bitset.contains(c));
         assert!(bitset.is_exactly(c));
+    }
+
+    #[test]
+    fn as_single_value() {
+        let a = Value::try_from(9).unwrap();
+        let b = Value::try_from(5).unwrap();
+        let c = Value::try_from(2).unwrap();
+
+        let mut bitset = ValueBitSet::default()
+            .with_value(a)
+            .with_value(b)
+            .with_value(c);
+        assert!(bitset.as_single_value().is_none());
+
+        let remove = ValueBitSet::default().with_value(a).with_value(b);
+        bitset.remove_many(&remove);
+
+        assert_eq!(bitset.as_single_value(), Some(c));
     }
 }

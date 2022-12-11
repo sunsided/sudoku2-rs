@@ -68,8 +68,7 @@ impl Strategy for HiddenSingles {
                 values.remove_many(state.get_at_index(index).as_bitset());
             }
 
-            if values.len() == 1 {
-                let value = values.as_single_value().unwrap();
+            if let Some(value) = values.as_single_value() {
                 if state.place_and_propagate_at_index(index_under_test, value, &groups) {
                     debug!(
                         "Placed hidden single {value:?} at {iut:?}",
