@@ -84,7 +84,7 @@ impl DefaultSolver {
                     }
                 }
 
-                match self.play_hidden_singles(&state) {
+                match self.play_hidden_singles_in_group(&state, CellGroupType::StandardColumn) {
                     Err(_) => {
                         // continue with previous stack frame
                         continue;
@@ -94,7 +94,7 @@ impl DefaultSolver {
                         {
                             if !state.is_consistent(&self.groups) {
                                 debug!(
-                                "Hidden singles resulted in inconsistent state - ignoring branch"
+                                "Hidden singles in standard columns resulted in inconsistent state - ignoring branch"
                             );
                                 self.print_state(&state);
                                 continue 'stack;
@@ -107,7 +107,7 @@ impl DefaultSolver {
                     }
                 }
 
-                match self.play_naked_twins(&state, CellGroupType::StandardColumn) {
+                match self.play_hidden_singles_in_group(&state, CellGroupType::StandardRow) {
                     Err(_) => {
                         // continue with previous stack frame
                         continue;
@@ -117,7 +117,76 @@ impl DefaultSolver {
                         {
                             if !state.is_consistent(&self.groups) {
                                 debug!(
-                                    "Naked twins on columns resulted in inconsistent state - ignoring branch"
+                                "Hidden singles in standard rows resulted in inconsistent state - ignoring branch"
+                            );
+                                self.print_state(&state);
+                                continue 'stack;
+                            }
+                        }
+
+                        if applied {
+                            continue 'solving;
+                        }
+                    }
+                }
+
+                match self.play_hidden_singles_in_group(&state, CellGroupType::StandardBlock) {
+                    Err(_) => {
+                        // continue with previous stack frame
+                        continue;
+                    }
+                    Ok(applied) => {
+                        #[cfg(debug_assertions)]
+                        {
+                            if !state.is_consistent(&self.groups) {
+                                debug!(
+                                "Hidden singles in standard blocks resulted in inconsistent state - ignoring branch"
+                            );
+                                self.print_state(&state);
+                                continue 'stack;
+                            }
+                        }
+
+                        if applied {
+                            continue 'solving;
+                        }
+                    }
+                }
+
+                match self.play_hidden_singles_in_group(&state, CellGroupType::Custom) {
+                    Err(_) => {
+                        // continue with previous stack frame
+                        continue;
+                    }
+                    Ok(applied) => {
+                        #[cfg(debug_assertions)]
+                        {
+                            if !state.is_consistent(&self.groups) {
+                                debug!(
+                                "Hidden singles in custom groups resulted in inconsistent state - ignoring branch"
+                            );
+                                self.print_state(&state);
+                                continue 'stack;
+                            }
+                        }
+
+                        if applied {
+                            continue 'solving;
+                        }
+                    }
+                }
+
+                match self.play_naked_twins_in_group(&state, CellGroupType::StandardColumn) {
+                    Err(_) => {
+                        // continue with previous stack frame
+                        continue;
+                    }
+                    Ok(applied) => {
+                        #[cfg(debug_assertions)]
+                        {
+                            if !state.is_consistent(&self.groups) {
+                                debug!(
+                                    "Naked twins in standard columns resulted in inconsistent state - ignoring branch"
                                 );
                                 self.print_state(&state);
                                 continue 'stack;
@@ -130,7 +199,7 @@ impl DefaultSolver {
                     }
                 }
 
-                match self.play_naked_twins(&state, CellGroupType::StandardRow) {
+                match self.play_naked_twins_in_group(&state, CellGroupType::StandardRow) {
                     Err(_) => {
                         // continue with previous stack frame
                         continue;
@@ -140,7 +209,7 @@ impl DefaultSolver {
                         {
                             if !state.is_consistent(&self.groups) {
                                 debug!(
-                                    "Naked twins on rows resulted in inconsistent state - ignoring branch"
+                                    "Naked twins in standard rows resulted in inconsistent state - ignoring branch"
                                 );
                                 self.print_state(&state);
                                 continue 'stack;
@@ -153,7 +222,7 @@ impl DefaultSolver {
                     }
                 }
 
-                match self.play_naked_twins(&state, CellGroupType::StandardBlock) {
+                match self.play_naked_twins_in_group(&state, CellGroupType::StandardBlock) {
                     Err(_) => {
                         // continue with previous stack frame
                         continue;
@@ -163,7 +232,30 @@ impl DefaultSolver {
                         {
                             if !state.is_consistent(&self.groups) {
                                 debug!(
-                                    "Naked twins on blocks resulted in inconsistent state - ignoring branch"
+                                    "Naked twins in standard blocks resulted in inconsistent state - ignoring branch"
+                                );
+                                self.print_state(&state);
+                                continue 'stack;
+                            }
+                        }
+
+                        if applied {
+                            continue 'solving;
+                        }
+                    }
+                }
+
+                match self.play_naked_twins_in_group(&state, CellGroupType::Custom) {
+                    Err(_) => {
+                        // continue with previous stack frame
+                        continue;
+                    }
+                    Ok(applied) => {
+                        #[cfg(debug_assertions)]
+                        {
+                            if !state.is_consistent(&self.groups) {
+                                debug!(
+                                    "Naked twins in custom groups resulted in inconsistent state - ignoring branch"
                                 );
                                 self.print_state(&state);
                                 continue 'stack;
@@ -266,7 +358,7 @@ impl DefaultSolver {
                 let cell = state.get_at_index(index);
                 if cell.as_bitset().contains_all(cell_under_test.as_bitset()) {
                     debug!(
-                        "Removing naked single {value:?} at {index:?} (from {iut:?})",
+                        "Removing naked single {value:?} at {index:?} (single at {iut:?})",
                         value = cell_under_test.as_bitset(),
                         index = index,
                         iut = index_under_test
@@ -290,7 +382,11 @@ impl DefaultSolver {
     /// Given two cells with the values `3 4` and `3 4 7`,
     /// `7` is the hidden single. Since it only appears in the second
     /// cell, it must be placed there (resulting in a "naked twin" pair of `3 4`).
-    fn play_hidden_singles(&self, state: &GameState) -> Result<bool, InvalidGameState> {
+    fn play_hidden_singles_in_group(
+        &self,
+        state: &GameState,
+        group_type: CellGroupType,
+    ) -> Result<bool, InvalidGameState> {
         let mut applied_some = false;
 
         for index_under_test in (0..81).map(Index::new) {
@@ -298,7 +394,7 @@ impl DefaultSolver {
             // possible value; we want to exclude impossible cells
             // and those that are already solved.
             let cell_under_test = state.get_at_index(index_under_test);
-            if cell_under_test.len() > 1 {
+            if cell_under_test.len() <= 1 {
                 continue;
             }
 
@@ -309,12 +405,15 @@ impl DefaultSolver {
             // Find all peers candidates.
             for index in self
                 .groups
-                .get_at_index(index_under_test, false)
+                .get_groups_at_index(index_under_test)
                 .unwrap()
                 .iter()
+                .filter(|g| g.group_type == group_type)
+                .flat_map(|g| g.iter_indexes())
+                .filter(|&i| i != index_under_test)
             {
                 debug_assert_ne!(index, index_under_test);
-                values.remove_many(state.get_at_index(index_under_test).as_bitset());
+                values.remove_many(state.get_at_index(index).as_bitset());
             }
 
             if values.len() == 1 {
@@ -342,7 +441,7 @@ impl DefaultSolver {
     /// Given three cells with the values `3 5`, `3 4` and `3 4`,
     /// `3 4` are the naked twins. Since they must appear in the last two
     /// cells, the `3` can be removed from the first cell.
-    fn play_naked_twins(
+    fn play_naked_twins_in_group(
         &self,
         state: &GameState,
         group_type: CellGroupType,
@@ -518,6 +617,18 @@ mod tests {
     #[test]
     fn solving_sudoku_works() {
         let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+        let result = solver.solve(&game);
+        assert!(result.is_ok());
+
+        let solution = result.unwrap();
+        assert!(solution.is_consistent(&game.groups));
+        assert!(solution.is_solved(&game.groups));
+    }
+
+    #[test]
+    fn solving_sudoku_with_hidden_singles() {
+        let game = crate::example_games::sudoku2::example_sudoku();
         let solver = DefaultSolver::new(&game);
         let result = solver.solve(&game);
         assert!(result.is_ok());
