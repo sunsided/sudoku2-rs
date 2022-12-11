@@ -239,6 +239,13 @@ impl DefaultSolver {
     /// Given three cells with the values `3 5`, `3 4` and `3 4`,
     /// `3 4` are the naked twins. Since they must appear in the last two
     /// cells, the `3` can be removed from the first cell.
+    ///
+    /// ## Notes
+    /// Playing this strategy is required because other strategies may
+    /// collapse the candidate space of a cell into a singular value. This
+    /// however does not automatically manifest the move, i.e. the value
+    /// is not propagated to the board. This strategy does just that: Identify
+    /// singles and ensure they are correctly propagated.
     fn play_lonely_singles(&self, state: &GameState) -> Result<bool, InvalidGameState> {
         let mut observed_singles = IndexBitSet::empty();
         let mut removed_some = false;
