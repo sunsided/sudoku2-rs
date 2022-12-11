@@ -8,7 +8,7 @@ fn main() {
         .target(env_logger::Target::Stdout)
         .init();
 
-    let game = sudoku2::example_games::sudoku::example_sudoku();
+    let game = sudoku2::example_games::sudoku::example_sudoku_naked_twins();
 
     println!("Cell groups:");
     game.print_cell_groups();
@@ -22,13 +22,22 @@ fn main() {
     solver.set_print_fn(|state| print_game_state(state));
 
     let now = Instant::now();
-    let solved = solver.solve(&game.initial_state).unwrap();
+    let result = solver.solve(&game.initial_state);
 
     println!(
         "Search terminated after {} s.",
         now.elapsed().subsec_micros() as f64 * 1e-6
     );
 
-    println!("Best solution:");
-    print_game_state(&solved);
+    match result {
+        Ok(solution) => {
+            println!("Best solution:");
+            print_game_state(&solution);
+        }
+        Err(Unsolvable(state)) => {
+            eprintln!("Failed to find a solution.");
+            println!("Best solution:");
+            print_game_state(&state);
+        }
+    }
 }

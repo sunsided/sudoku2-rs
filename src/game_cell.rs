@@ -68,6 +68,18 @@ impl GameCell {
         self.possible_values.contains(value)
     }
 
+    /// Determines whether this cell contains at least one of the specified values.
+    #[inline]
+    pub const fn contains_some(&self, values: &ValueBitSet) -> bool {
+        self.possible_values.contains_some(values)
+    }
+
+    /// Determines whether this cell contains at least one of the specified values.
+    #[inline]
+    pub const fn contains_all(&self, values: &ValueBitSet) -> bool {
+        self.possible_values.contains_all(values)
+    }
+
     /// Replaces this cell's value(s) with the specified one.
     #[inline]
     pub fn set_to(&mut self, value: Value) -> &mut Self {

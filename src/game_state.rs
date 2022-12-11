@@ -96,19 +96,29 @@ impl GameState {
     /// Forgets a value at the specified cell. No changes will be propagated,
     /// but the cell will be treated as if the value was never an option.
     #[inline]
-    pub fn forget_at_index(&self, index: Index, value: Value) -> &Self {
+    pub fn forget_at_index(&self, index: Index, value: Value) -> bool {
         let cell = self.cell_at_index(index);
-        cell.set(cell.get().without_value(value));
-        self
+        let gc = cell.get();
+        if gc.contains(value) {
+            cell.set(gc.without_value(value));
+            true
+        } else {
+            false
+        }
     }
 
     /// Forgets a value at the specified cell. No changes will be propagated,
     /// but the cell will be treated as if the value was never an option.
     #[inline]
-    pub fn forget_many_at_index(&self, index: Index, values: &ValueBitSet) -> &Self {
+    pub fn forget_many_at_index(&self, index: Index, values: &ValueBitSet) -> bool {
         let cell = self.cell_at_index(index);
-        cell.set(cell.get().without_values(values));
-        self
+        let gc = cell.get();
+        if gc.contains_some(values) {
+            cell.set(gc.without_values(values));
+            true
+        } else {
+            false
+        }
     }
 
     #[inline]
@@ -197,7 +207,7 @@ impl GameState {
                 }
 
                 let cell_set = cell.as_bitset();
-                if cell_under_test.contains_set(cell_set) {
+                if cell_under_test.contains_all(cell_set) {
                     return false;
                 }
             }

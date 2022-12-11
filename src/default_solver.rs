@@ -1,4 +1,4 @@
-use crate::cell_group::CellGroups;
+use crate::cell_group::{CellGroupType, CellGroups};
 use crate::index::{Index, IndexBitSet};
 use crate::prelude::{GameState, ValueBitSet};
 use log::debug;
@@ -12,7 +12,7 @@ pub struct DefaultSolver {
 
 #[derive(Debug, thiserror::Error)]
 #[error("The game is unsolvable")]
-pub struct Unsolvable {}
+pub struct Unsolvable(pub GameState);
 
 #[derive(Debug)]
 struct SmallestIndex {
@@ -42,8 +42,13 @@ impl DefaultSolver {
     }
 
     pub fn solve<S: AsRef<GameState>>(&self, state: S) -> Result<GameState, Unsolvable> {
-        let mut stack = vec![state.as_ref().clone()];
+        // We keep the last seen state as a reference to return when the board is unsolvable.
+        let mut last_seen_state = state.as_ref().clone();
+
+        let mut stack = vec![last_seen_state.clone()];
         'stack: while let Some(state) = stack.pop() {
+            last_seen_state = state.clone();
+
             debug!("Taking state from stack ...");
             self.print_state(&state);
 
@@ -102,7 +107,7 @@ impl DefaultSolver {
                     }
                 }
 
-                match self.play_naked_twins(&state) {
+                match self.play_naked_twins(&state, CellGroupType::StandardBlock) {
                     Err(_) => {
                         // continue with previous stack frame
                         continue;
@@ -177,7 +182,7 @@ impl DefaultSolver {
             }
         }
 
-        Err(Unsolvable {})
+        Err(Unsolvable(last_seen_state))
     }
 
     /// Identifies and realizes naked twins.
@@ -214,7 +219,7 @@ impl DefaultSolver {
                     continue;
                 }
 
-                if cell.as_bitset().contains_set(cell_under_test.as_bitset()) {
+                if cell.as_bitset().contains_all(cell_under_test.as_bitset()) {
                     debug!(
                         "Removing lonely single {value:?} at {index:?} (from {iut:?})",
                         value = cell_under_test.as_bitset(),
@@ -252,7 +257,11 @@ impl DefaultSolver {
     /// Given three cells with the values `3 5`, `3 4` and `3 4`,
     /// `3 4` are the naked twins. Since they must appear in the last two
     /// cells, the `3` can be removed from the first cell.
-    fn play_naked_twins(&self, state: &GameState) -> Result<bool, InvalidGameState> {
+    fn play_naked_twins(
+        &self,
+        state: &GameState,
+        group_type: CellGroupType,
+    ) -> Result<bool, InvalidGameState> {
         let mut twins_to_remove = Vec::default();
         let mut observed_twins = IndexBitSet::empty();
 
@@ -270,18 +279,26 @@ impl DefaultSolver {
             let mut possible_twins = Vec::default();
 
             // Find all possible twin candidates.
-            for index in self.groups.get_at_index(index_under_test).unwrap().iter() {
-                if observed_twins.contains(index) {
-                    continue;
-                }
+            for group in self
+                .groups
+                .get_groups_at_index(index_under_test)
+                .unwrap()
+                .iter()
+                .filter(|g| g.group_type == group_type)
+            {
+                for index in group.iter_indexes() {
+                    if observed_twins.contains(index) {
+                        continue;
+                    }
 
-                let cell = state.get_at_index(index);
-                if cell.len() != 2 {
-                    continue;
-                }
+                    let cell = state.get_at_index(index);
+                    if cell.len() != 2 {
+                        continue;
+                    }
 
-                if cell.as_bitset().eq(cell_under_test.as_bitset()) {
-                    possible_twins.push(cell.into_indexed(index));
+                    if cell.as_bitset().eq(cell_under_test.as_bitset()) {
+                        possible_twins.push(cell.into_indexed(index));
+                    }
                 }
             }
 
@@ -321,21 +338,24 @@ impl DefaultSolver {
         }
 
         // Iterate the detected twins, find their groups and eliminate the values.
+        let mut applied_some = false;
         for twin in twins_to_remove.into_iter() {
             // The choice of the smaller or larger index here doesn't matter as they
             // are in the same group.
             for index in self
                 .groups
-                .get_at_index(twin.smaller)
+                .get_groups_at_index(twin.smaller)
                 .unwrap()
                 .iter()
+                .filter(|g| g.group_type == group_type)
+                .flat_map(|g| g.iter_indexes())
                 .filter(|&x| x != twin.smaller && x != twin.larger)
             {
-                state.forget_many_at_index(index, &twin.values);
+                applied_some |= state.forget_many_at_index(index, &twin.values);
             }
         }
 
-        return Ok(true);
+        return Ok(applied_some);
 
         struct TwinPair {
             smaller: Index,
@@ -407,6 +427,18 @@ mod tests {
     #[test]
     fn solving_sudoku_works() {
         let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+        let result = solver.solve(&game);
+        assert!(result.is_ok());
+
+        let solution = result.unwrap();
+        assert!(solution.is_consistent(&game.groups));
+        assert!(solution.is_solved(&game.groups));
+    }
+
+    #[test]
+    fn solving_sudoku_with_naked_twins() {
+        let game = crate::example_games::sudoku::example_sudoku_naked_twins();
         let solver = DefaultSolver::new(&game);
         let result = solver.solve(&game);
         assert!(result.is_ok());

@@ -179,8 +179,13 @@ impl ValueBitSet {
     }
 
     #[inline]
-    pub const fn contains_set(&self, values: &ValueBitSet) -> bool {
+    pub const fn contains_all(&self, values: &ValueBitSet) -> bool {
         (self.state & values.state) == values.state
+    }
+
+    #[inline]
+    pub const fn contains_some(&self, values: &ValueBitSet) -> bool {
+        (self.state & values.state) != 0
     }
 
     pub const fn len(&self) -> usize {
