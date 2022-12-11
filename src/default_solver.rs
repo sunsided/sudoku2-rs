@@ -250,7 +250,7 @@ impl DefaultSolver {
         let mut observed_singles = IndexBitSet::empty();
         let mut removed_some = false;
 
-        for index_under_test in (0..81).map(Index::new) {
+        for index_under_test in Index::range() {
             if !observed_singles.try_insert(index_under_test) {
                 continue;
             }
@@ -314,7 +314,7 @@ impl DefaultSolver {
         let mut twins_to_remove = Vec::default();
         let mut observed_twins = IndexBitSet::empty();
 
-        for index_under_test in (0..81).map(Index::new) {
+        for index_under_test in Index::range() {
             if !observed_twins.try_insert(index_under_test) {
                 continue;
             }
@@ -419,7 +419,7 @@ impl DefaultSolver {
         // Within that, identify the cell with the fewest options in that group.
         let mut smallest = SmallestIndex::default();
 
-        for index_under_test in (0..81).map(Index::new) {
+        for index_under_test in Index::range() {
             let mut group_size = 0;
             let mut group_smallest = SmallestIndex::default();
             for index in self.groups.get_at_index(index_under_test).unwrap().iter() {

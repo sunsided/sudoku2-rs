@@ -1,33 +1,43 @@
 use crate::coordinate::Coordinate;
 use std::fmt::{Debug, Formatter};
-use std::ops::Deref;
+use std::iter::Map;
+use std::ops::{Deref, Range};
 
 /// A classical Sudoku index, ranging 0..=80 for 81 fields.
 #[derive(Default, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Index(u8);
 
 impl Index {
+    #[inline]
     pub const fn new(index: u8) -> Self {
         debug_assert!(index < 81);
         Self(index)
+    }
+
+    #[inline]
+    pub fn range() -> Map<Range<u8>, fn(u8) -> Index> {
+        (0..81).map(Index::new)
     }
 }
 
 impl Deref for Index {
     type Target = u8;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl Into<u8> for Index {
+    #[inline]
     fn into(self) -> u8 {
         self.0
     }
 }
 
 impl Into<u8> for &Index {
+    #[inline]
     fn into(self) -> u8 {
         self.0
     }
@@ -138,14 +148,17 @@ impl IndexBitSet {
         flag != 0
     }
 
+    #[inline]
     pub const fn len(&self) -> usize {
         (self.state & Self::MASK).count_ones() as _
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.state & Self::MASK == 0
     }
 
+    #[inline]
     pub fn iter(&self) -> IndexBitSetIter {
         IndexBitSetIter {
             value: self,
