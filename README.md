@@ -35,6 +35,8 @@ The solver's output is shown below. To run, execute:
 $ cargo run --release --example solver -- --sudoku
 ```
 
+For the code, see [`src/example_games/sudoku.rs`](src/example_games/sudoku.rs).
+
 ### Cell groups
 
 ```plain
@@ -157,6 +159,8 @@ The solver's output is shown below. To run, execute:
 $ cargo run --release --example solver -- --nonomino
 ```
 
+For the code, see [`src/example_games/nonomino.rs`](src/example_games/nonomino.rs).
+
 ### Cell groups
 
 ```plain
@@ -272,6 +276,8 @@ A Hypersudoku example. To run it, execute:
 ```bash
 $ cargo run --release --example solver -- --hyper
 ```
+
+For the code, see [`src/example_games/hypersudoku.rs](src/example_games/hypersudoku.rs).
 
 ### Initial state
 

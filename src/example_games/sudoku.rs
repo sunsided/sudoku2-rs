@@ -36,6 +36,10 @@ pub fn example_sudoku() -> Game {
         .with_default_sudoku_blocks()
         .with_default_rows_and_columns();
 
+    // NOTE: The code below is using the explicit syntax for placing
+    //       values. Other examples such as Nonomino and Hypersudoku
+    //       use a simplified version that is much easier on the eyes.
+
     let state = GameState::new();
     state.set_at_xy(0, 0, Value::FIVE);
     state.set_at_xy(1, 0, Value::THREE);
@@ -117,7 +121,8 @@ pub fn example_sudoku() -> Game {
 ///     2 8 7   4 1 9   6 3 5
 ///     3 4 5   2 8 6   1 7 9
 /// ```
-pub fn example_sudoku_naked_twins() -> Game {
+#[cfg(test)]
+pub(crate) fn example_sudoku_naked_twins() -> Game {
     let groups = CellGroups::default()
         .with_default_sudoku_blocks()
         .with_default_rows_and_columns();
@@ -236,6 +241,7 @@ pub fn example_sudoku_naked_twins() -> Game {
 ///     2 8 7   4 1 9   6 3 5
 ///     3 4 5   2 8 6   1 7 9
 /// ```
+#[cfg(test)]
 #[allow(dead_code)]
 pub(crate) fn example_sudoku_naked_triples() -> Game {
     let groups = CellGroups::default()
