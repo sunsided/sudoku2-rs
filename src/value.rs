@@ -298,6 +298,24 @@ impl Debug for ValueBitSet {
     }
 }
 
+pub trait IntoValueOptions {
+    fn into(self) -> [ValueOption; 81];
+}
+
+impl IntoValueOptions for [u8; 81] {
+    fn into(self) -> [ValueOption; 81] {
+        let mut values = [None; 81];
+        for (i, v) in self.into_iter().enumerate() {
+            match v {
+                10.. => panic!("An invalid value was specified"),
+                0 => values[i] = None,
+                x => values[i] = Some(Value::try_from(x).unwrap()),
+            }
+        }
+        values
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;

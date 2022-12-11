@@ -2,7 +2,7 @@ use crate::cell_group::CellGroups;
 use crate::game_cell::GameCell;
 use crate::index::{Index, IndexBitSet};
 use crate::prelude::Coordinate;
-use crate::value::{Value, ValueBitSet};
+use crate::value::{IntoValueOptions, Value, ValueBitSet};
 use std::cell::Cell;
 use std::mem::MaybeUninit;
 
@@ -23,6 +23,22 @@ impl GameState {
             unsafe { MaybeUninit::uninit().assume_init() };
         for i in 0..81 {
             cells[i].write(Cell::new(GameCell::default()));
+        }
+        Self {
+            cells: unsafe { std::mem::transmute(cells) },
+        }
+    }
+
+    pub fn new_from<S: IntoValueOptions>(values: S) -> Self {
+        let mut cells: [MaybeUninit<Cell<GameCell>>; 81] =
+            unsafe { MaybeUninit::uninit().assume_init() };
+
+        let values = values.into();
+        for i in 0..81 {
+            match values[i] {
+                Some(value) => cells[i].write(Cell::new(GameCell::from_value(value))),
+                None => cells[i].write(Cell::new(GameCell::default())),
+            };
         }
         Self {
             cells: unsafe { std::mem::transmute(cells) },
@@ -272,5 +288,75 @@ impl core::ops::Index<Coordinate> for GameState {
     #[inline]
     fn index(&self, coord: Coordinate) -> &Self::Output {
         self.cell_at_coord(coord)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::prelude::Value;
+
+    //noinspection DuplicatedCode
+    #[test]
+    #[rustfmt::skip]
+    fn from_array() {
+        let x = 0u8;
+        let test_state = GameState::new_from([
+            x, 2, 8,   x, x, 7,   x, x, x,
+            x, 1, 6,   x, 8, 3,   x, 7, x,
+            x, x, x,   x, 2, x,   8, 5, 1,
+
+            1, 3, 7,   2, 9, x,   x, x, x,
+            x, x, x,   7, 3, x,   x, x, x,
+            x, x, x,   x, 4, 6,   3, x, 7,
+
+            2, 9, x,   x, 7, x,   x, x, x,
+            x, x, x,   8, 6, x,   1, 4, x,
+            x, x, x,   3, x, x,   7, x, x,
+        ]);
+
+        let expected_state = GameState::new();
+        expected_state.set_at_xy(1, 0, Value::TWO);
+        expected_state.set_at_xy(2, 0, Value::EIGHT);
+        expected_state.set_at_xy(5, 0, Value::SEVEN);
+
+        expected_state.set_at_xy(1, 1, Value::ONE);
+        expected_state.set_at_xy(2, 1, Value::SIX);
+        expected_state.set_at_xy(4, 1, Value::EIGHT);
+        expected_state.set_at_xy(5, 1, Value::THREE);
+        expected_state.set_at_xy(7, 1, Value::SEVEN);
+
+        expected_state.set_at_xy(4, 2, Value::TWO);
+        expected_state.set_at_xy(6, 2, Value::EIGHT);
+        expected_state.set_at_xy(7, 2, Value::FIVE);
+        expected_state.set_at_xy(8, 2, Value::ONE);
+
+        expected_state.set_at_xy(0, 3, Value::ONE);
+        expected_state.set_at_xy(1, 3, Value::THREE);
+        expected_state.set_at_xy(2, 3, Value::SEVEN);
+        expected_state.set_at_xy(3, 3, Value::TWO);
+        expected_state.set_at_xy(4, 3, Value::NINE);
+
+        expected_state.set_at_xy(3, 4, Value::SEVEN);
+        expected_state.set_at_xy(4, 4, Value::THREE);
+
+        expected_state.set_at_xy(4, 5, Value::FOUR);
+        expected_state.set_at_xy(5, 5, Value::SIX);
+        expected_state.set_at_xy(6, 5, Value::THREE);
+        expected_state.set_at_xy(8, 5, Value::SEVEN);
+
+        expected_state.set_at_xy(0, 6, Value::TWO);
+        expected_state.set_at_xy(1, 6, Value::NINE);
+        expected_state.set_at_xy(4, 6, Value::SEVEN);
+
+        expected_state.set_at_xy(3, 7, Value::EIGHT);
+        expected_state.set_at_xy(4, 7, Value::SIX);
+        expected_state.set_at_xy(6, 7, Value::ONE);
+        expected_state.set_at_xy(7, 7, Value::FOUR);
+
+        expected_state.set_at_xy(3, 8, Value::THREE);
+        expected_state.set_at_xy(6, 8, Value::SEVEN);
+
+        assert_eq!(expected_state, test_state);
     }
 }
