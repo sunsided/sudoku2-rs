@@ -68,6 +68,12 @@ impl GameCell {
         self.possible_values.contains(value)
     }
 
+    /// Determines whether this cell contains a specific value (possibly as a candidate).
+    #[inline]
+    pub const fn is_exactly(&self, value: Value) -> bool {
+        self.possible_values.is_exactly(value)
+    }
+
     /// Determines whether this cell contains at least one of the specified values.
     #[inline]
     pub const fn contains_some(&self, values: &ValueBitSet) -> bool {

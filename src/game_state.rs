@@ -71,8 +71,8 @@ impl GameState {
         index: Index,
         value: Value,
         groups: &CellGroups,
-    ) -> &Self {
-        self.set_at_index(index, value);
+    ) -> bool {
+        let mut changed = self.set_at_index(index, value);
 
         let groups = groups
             .get_at_index(index, false)
@@ -83,10 +83,14 @@ impl GameState {
             debug_assert_ne!(peer_index, index);
 
             let peer = self.cell_at_index(peer_index);
-            peer.set(peer.get().without_value(value));
+            let cell_value = peer.get();
+            if cell_value.contains(value) {
+                peer.set(cell_value.without_value(value));
+                changed = true;
+            }
         }
 
-        self
+        changed
     }
 
     /// Places a value at the specified cell, propagating the changes through the board.
@@ -117,7 +121,7 @@ impl GameState {
     /// Places a value at the specified cell, but does not propagate the changes through the board.
     /// For making a proper move, use [`place_and_propagate_at_index`] instead.
     #[inline]
-    pub fn set_at_index(&self, index: Index, value: Value) -> &Self {
+    pub fn set_at_index(&self, index: Index, value: Value) -> bool {
         let cell = self.cell_at_index(index);
 
         #[cfg(debug_assertions)]
@@ -132,8 +136,12 @@ impl GameState {
             );
         }
 
+        if cell.get().is_exactly(value) {
+            return false;
+        }
+
         cell.set(GameCell::from_value(value));
-        self
+        true
     }
 
     /// Places a value at the specified cell, but does not propagate the changes through the board.

@@ -55,19 +55,15 @@ impl Strategy for NakedSingles {
             // Find all peers candidates.
             for index in groups.get_at_index(index_under_test, false).unwrap().iter() {
                 debug_assert_ne!(index, index_under_test);
-
-                let cell = state.get_at_index(index);
-                if cell.as_bitset().contains_all(cell_under_test.as_bitset()) {
+                if state.forget_many_at_index(index, cell_under_test.as_bitset()) {
                     debug!(
-                        "Removing naked single {value:?} at {index:?} (single at {iut:?})",
+                        "Removed naked single {value:?} at {index:?} (single at {iut:?})",
                         value = cell_under_test.as_bitset(),
                         index = index,
                         iut = index_under_test
                     );
                     removed_some = true;
                 }
-
-                state.forget_many_at_index(index, cell_under_test.as_bitset());
             }
         }
 

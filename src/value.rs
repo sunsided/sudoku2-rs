@@ -179,6 +179,15 @@ impl ValueBitSet {
     }
 
     #[inline]
+    pub const fn is_exactly(&self, value: Value) -> bool {
+        debug_assert!(value.get() <= 9);
+        let value = value.get() as u16;
+        // Since the value is a non-zero u8 we subtract one for the first bit.
+        let flag = self.state & (1u16 << (value - 1));
+        flag == self.state
+    }
+
+    #[inline]
     pub const fn contains_all(&self, values: &ValueBitSet) -> bool {
         (self.state & values.state) == values.state
     }
@@ -474,5 +483,25 @@ mod tests {
         assert!(!bitset.contains(a));
         assert!(!bitset.contains(b));
         assert!(bitset.contains(c));
+    }
+
+    #[test]
+    fn is_exactly() {
+        let a = Value::try_from(9).unwrap();
+        let b = Value::try_from(5).unwrap();
+        let c = Value::try_from(2).unwrap();
+
+        let mut bitset = ValueBitSet::default()
+            .with_value(a)
+            .with_value(b)
+            .with_value(c);
+        assert!(bitset.contains(c));
+        assert!(!bitset.is_exactly(c));
+
+        let remove = ValueBitSet::default().with_value(a).with_value(b);
+        bitset.remove_many(&remove);
+
+        assert!(bitset.contains(c));
+        assert!(bitset.is_exactly(c));
     }
 }
