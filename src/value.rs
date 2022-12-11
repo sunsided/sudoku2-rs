@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Formatter};
-use std::num::NonZeroU8;
+use std::num::{NonZeroU8, TryFromIntError};
 use std::ops::Deref;
 
 /// A classical Sudoku index, ranging 1..=9 for 9 fields.
@@ -20,9 +20,15 @@ impl Value {
     pub const EIGHT: Value = unsafe { Value::new_unchecked(8) };
     pub const NINE: Value = unsafe { Value::new_unchecked(9) };
 
-    pub const fn new(index: NonZeroU8) -> Self {
-        assert!(index.get() <= 9);
-        Self(index)
+    pub const fn new(value: NonZeroU8) -> Self {
+        assert!(value.get() <= 9);
+        Self(value)
+    }
+
+    pub fn try_from(value: u8) -> Result<Value, TryFromIntError> {
+        assert!(value <= 9);
+        let value = NonZeroU8::try_from(value)?;
+        Ok(Self(value))
     }
 
     /// Uses [`NonZeroU8::new_unchecked`] to construct the value.

@@ -65,12 +65,15 @@ impl DefaultSolver {
                         continue;
                     }
                     Ok(_) => {
-                        if !state.is_consistent(&self.groups) {
-                            debug!(
+                        #[cfg(debug_assertions)]
+                        {
+                            if !state.is_consistent(&self.groups) {
+                                debug!(
                                 "Lonely singles resulted in inconsistent state - ignoring branch"
                             );
-                            self.print_state(&state);
-                            continue 'stack;
+                                self.print_state(&state);
+                                continue 'stack;
+                            }
                         }
 
                         // always continue.
@@ -83,12 +86,15 @@ impl DefaultSolver {
                         continue;
                     }
                     Ok(applied) => {
-                        if !state.is_consistent(&self.groups) {
-                            debug!(
+                        #[cfg(debug_assertions)]
+                        {
+                            if !state.is_consistent(&self.groups) {
+                                debug!(
                                 "Hidden singles resulted in inconsistent state - ignoring branch"
                             );
-                            self.print_state(&state);
-                            continue 'stack;
+                                self.print_state(&state);
+                                continue 'stack;
+                            }
                         }
 
                         if applied {
@@ -103,10 +109,15 @@ impl DefaultSolver {
                         continue;
                     }
                     Ok(applied) => {
-                        if !state.is_consistent(&self.groups) {
-                            debug!("Naked twins resulted in inconsistent state - ignoring branch");
-                            self.print_state(&state);
-                            continue 'stack;
+                        #[cfg(debug_assertions)]
+                        {
+                            if !state.is_consistent(&self.groups) {
+                                debug!(
+                                    "Naked twins resulted in inconsistent state - ignoring branch"
+                                );
+                                self.print_state(&state);
+                                continue 'stack;
+                            }
                         }
 
                         if applied {
@@ -117,6 +128,12 @@ impl DefaultSolver {
 
                 // No more strategies.
                 break;
+            }
+
+            if !state.is_consistent(&self.groups) {
+                debug!("Applying strategies resulted in inconsistent state - ignoring branch");
+                self.print_state(&state);
+                continue 'stack;
             }
 
             if state.is_solved(&self.groups) {
