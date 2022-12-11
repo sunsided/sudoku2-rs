@@ -8,7 +8,7 @@ fn main() {
         .target(env_logger::Target::Stdout)
         .init();
 
-    let game = sudoku2::example_games::nonomino::example_nonomino();
+    let game = sudoku2::example_games::hypersudoku::example_hypersudoku();
 
     println!("Cell groups:");
     game.print_cell_groups();
@@ -29,6 +29,14 @@ fn main() {
         Ok(solution) => {
             println!("Found solution:");
             print_game_state(&solution);
+
+            if let Some(expected_solution) = game.expected_solution {
+                if expected_solution.eq(&solution) {
+                    println!("(Solution matches expectation.)");
+                } else {
+                    println!("(Solution differs from expectation.)");
+                }
+            }
         }
         Err(Unsolvable(state)) => {
             println!("Last available state:");

@@ -119,6 +119,21 @@ impl CellGroups {
         self
     }
 
+    pub fn with_hypersudoku_windows(mut self) -> Self {
+        self.with_group(CellGroup::from_u8_slice(&[
+            10, 11, 12, 19, 20, 21, 28, 29, 30,
+        ]))
+        .with_group(CellGroup::from_u8_slice(&[
+            14, 15, 16, 23, 24, 25, 32, 33, 34,
+        ]))
+        .with_group(CellGroup::from_u8_slice(&[
+            46, 47, 48, 55, 56, 57, 64, 65, 66,
+        ]))
+        .with_group(CellGroup::from_u8_slice(&[
+            50, 51, 52, 59, 60, 61, 68, 69, 70,
+        ]))
+    }
+
     #[inline]
     pub fn get_at_xy(
         &self,

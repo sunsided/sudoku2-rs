@@ -661,4 +661,16 @@ mod tests {
         assert!(solution.is_consistent(&game.groups));
         assert!(solution.is_solved(&game.groups));
     }
+
+    #[test]
+    fn solving_hypersudoku() {
+        let game = crate::example_games::hypersudoku::example_hypersudoku();
+        let solver = DefaultSolver::new(&game);
+        let result = solver.solve(&game);
+        assert!(result.is_ok());
+
+        let solution = result.unwrap();
+        assert!(solution.is_consistent(&game.groups));
+        assert!(solution.is_solved(&game.groups));
+    }
 }
