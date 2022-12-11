@@ -141,17 +141,14 @@ impl IndexBitSet {
     }
 
     #[inline]
-    pub fn overlaps_with(&self, other: &IndexBitSet) -> bool {
+    pub const fn overlaps_with(&self, other: &IndexBitSet) -> bool {
         let state = (self.state & other.state) & Self::MASK;
         state > 0
     }
 
     #[inline]
     pub const fn contains(&self, index: Index) -> bool {
-        if index.0 >= 81 {
-            return false;
-        }
-
+        debug_assert!(index.0 < 81);
         let value = index.0 as u128;
         let flag = self.state & (1 << value);
         flag != 0
@@ -163,7 +160,7 @@ impl IndexBitSet {
     }
 
     #[inline]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.state & Self::MASK == 0
     }
 
@@ -216,22 +213,19 @@ impl Iterator for IndexBitSetIter {
     type Item = Index;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= 81 {
-            return None;
+        let state = self.value.state;
+        let mut index = self.index;
+        while index < 81 {
+            let test = 1u128 << index;
+            if state & test != 0 {
+                self.index = index + 1;
+                return Some(Index::new(index));
+            }
+            index += 1;
         }
 
-        while self.index < 81 && !self.value.contains(Index::new(self.index)) {
-            self.index += 1;
-        }
-
-        let matched = self.index;
-        self.index += 1;
-
-        if matched >= 81 {
-            None
-        } else {
-            Some(Index::new(matched))
-        }
+        self.index = 81;
+        None
     }
 }
 
@@ -328,6 +322,15 @@ mod tests {
 
         assert_eq!(iter.next(), Some(b));
         assert_eq!(iter.next(), Some(a));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn iter_empty() {
+        let bitset = IndexBitSet::empty();
+        let mut iter = bitset.iter();
+
         assert_eq!(iter.next(), None);
         assert_eq!(iter.next(), None);
     }
