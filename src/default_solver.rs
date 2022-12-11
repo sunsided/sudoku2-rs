@@ -1,4 +1,4 @@
-use crate::cell_group::CellGroups;
+use crate::cell_group::{CellGroups, CollectIndexes};
 use crate::game_state::InvalidGameState;
 use crate::index::Index;
 use crate::prelude::GameState;
@@ -182,7 +182,7 @@ impl DefaultSolver {
             let mut group_smallest = SmallestIndex::default();
             for index in self
                 .groups
-                .get_at_index(index_under_test, true)
+                .get_at_index(index_under_test, CollectIndexes::IncludeSelf)
                 .unwrap()
                 .iter()
             {

@@ -1,4 +1,4 @@
-use crate::cell_group::{CellGroupType, CellGroups};
+use crate::cell_group::{CellGroupType, CellGroups, CollectIndexes};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::{Index, IndexBitSet};
 use crate::strategies::{Strategy, StrategyResult};
@@ -53,7 +53,11 @@ impl Strategy for NakedSingles {
             }
 
             // Find all peers candidates.
-            for index in groups.get_at_index(index_under_test, false).unwrap().iter() {
+            for index in groups
+                .get_at_index(index_under_test, CollectIndexes::ExcludeSelf)
+                .unwrap()
+                .iter()
+            {
                 debug_assert_ne!(index, index_under_test);
                 if state.forget_many_at_index(index, cell_under_test.as_bitset()) {
                     debug!(

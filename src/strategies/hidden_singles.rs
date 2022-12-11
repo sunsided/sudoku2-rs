@@ -70,14 +70,14 @@ impl Strategy for HiddenSingles {
 
             if values.len() == 1 {
                 let value = values.as_single_value().unwrap();
-                applied_some |=
-                    state.place_and_propagate_at_index(index_under_test, value, &groups);
-
-                debug!(
-                    "Placed hidden single {value:?} at {iut:?}",
-                    value = value,
-                    iut = index_under_test
-                );
+                if state.place_and_propagate_at_index(index_under_test, value, &groups) {
+                    debug!(
+                        "Placed hidden single {value:?} at {iut:?}",
+                        value = value,
+                        iut = index_under_test
+                    );
+                    applied_some = true;
+                }
             }
         }
 

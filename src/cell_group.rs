@@ -11,6 +11,15 @@ pub enum CellGroupType {
     StandardColumn,
 }
 
+/// Controls which indexes to collect.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum CollectIndexes {
+    /// Excludes the specified index during collection.
+    ExcludeSelf,
+    /// Includes the specified index during collection.
+    IncludeSelf,
+}
+
 /// The set of all cell groups relevant to a game.
 #[derive(Default, Debug, Clone)]
 pub struct CellGroups {
@@ -139,25 +148,25 @@ impl CellGroups {
         &self,
         x: u8,
         y: u8,
-        include_self: bool,
+        mode: CollectIndexes,
     ) -> Result<IndexBitSet, NoMatchingGroup> {
         debug_assert!(x <= 9 && y <= 9);
-        self.get_at_coord(Coordinate::new(x, y), include_self)
+        self.get_at_coord(Coordinate::new(x, y), mode)
     }
 
     #[inline]
     pub fn get_at_coord(
         &self,
         coord: Coordinate,
-        include_self: bool,
+        mode: CollectIndexes,
     ) -> Result<IndexBitSet, NoMatchingGroup> {
-        self.get_at_index(coord.into(), include_self)
+        self.get_at_index(coord.into(), mode)
     }
 
     pub fn get_at_index(
         &self,
         index: Index,
-        include_self: bool,
+        mode: CollectIndexes,
     ) -> Result<IndexBitSet, NoMatchingGroup> {
         let mut set = IndexBitSet::empty();
 
@@ -167,9 +176,12 @@ impl CellGroups {
             }
         }
 
-        if !include_self {
-            set.remove(index);
-        }
+        match mode {
+            CollectIndexes::IncludeSelf => { /* intentionally left empty */ }
+            CollectIndexes::ExcludeSelf => {
+                set.remove(index);
+            }
+        };
 
         if set.is_empty() {
             Err(NoMatchingGroup {})
