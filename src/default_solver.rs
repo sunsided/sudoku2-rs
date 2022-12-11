@@ -254,17 +254,13 @@ impl DefaultSolver {
                 continue;
             }
 
-            // Find all possible twin candidates.
+            // Find all peers candidates.
             for index in self.groups.get_at_index(index_under_test).unwrap().iter() {
                 if index == index_under_test {
                     continue;
                 }
 
                 let cell = state.get_at_index(index);
-                if cell.len() != 2 {
-                    continue;
-                }
-
                 if cell.as_bitset().contains_all(cell_under_test.as_bitset()) {
                     debug!(
                         "Removing lonely single {value:?} at {index:?} (from {iut:?})",
