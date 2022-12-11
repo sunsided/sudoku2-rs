@@ -649,4 +649,16 @@ mod tests {
         assert!(solution.is_consistent(&game.groups));
         assert!(solution.is_solved(&game.groups));
     }
+
+    #[test]
+    fn solving_nonomino() {
+        let game = crate::example_games::nonomino::example_nonomino();
+        let solver = DefaultSolver::new(&game);
+        let result = solver.solve(&game);
+        assert!(result.is_ok());
+
+        let solution = result.unwrap();
+        assert!(solution.is_consistent(&game.groups));
+        assert!(solution.is_solved(&game.groups));
+    }
 }

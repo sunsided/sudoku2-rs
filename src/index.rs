@@ -78,6 +78,15 @@ impl IndexBitSet {
     }
 
     #[inline]
+    pub fn from_u8_slice<T: AsRef<[u8]>>(index: T) -> Self {
+        let mut state = Self::empty();
+        for index in index.as_ref().iter() {
+            state = state.with_index(Index::new(*index));
+        }
+        state
+    }
+
+    #[inline]
     pub const fn with_index(mut self, index: Index) -> Self {
         debug_assert!(index.0 < 81);
         let value = index.0 as u128;
@@ -161,7 +170,7 @@ impl IndexBitSet {
     #[inline]
     pub fn iter(&self) -> IndexBitSetIter {
         IndexBitSetIter {
-            value: self,
+            value: self.clone(),
             index: 0,
         }
     }
@@ -189,12 +198,21 @@ impl From<&[Index]> for IndexBitSet {
     }
 }
 
-pub struct IndexBitSetIter<'a> {
-    value: &'a IndexBitSet,
+impl IntoIterator for IndexBitSet {
+    type Item = Index;
+    type IntoIter = IndexBitSetIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+pub struct IndexBitSetIter {
+    value: IndexBitSet,
     index: u8,
 }
 
-impl<'a> Iterator for IndexBitSetIter<'a> {
+impl Iterator for IndexBitSetIter {
     type Item = Index;
 
     fn next(&mut self) -> Option<Self::Item> {

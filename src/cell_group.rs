@@ -249,6 +249,10 @@ impl CellGroup {
         Self::default().with_indexes(indexes)
     }
 
+    pub fn from_u8_slice<T: AsRef<[u8]>>(indexes: T) -> Self {
+        Self::from_indexes(IndexBitSet::from_u8_slice(indexes))
+    }
+
     pub fn with_indexes<T: IntoIterator<Item = Index>>(mut self, indexes: T) -> Self {
         for index in indexes.into_iter() {
             self.indexes = self.indexes.with_index(index);
