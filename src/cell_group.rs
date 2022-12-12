@@ -217,19 +217,19 @@ impl CellGroups {
         }
     }
 
-    pub fn get_peer_indexes(
-        &self,
+    pub fn get_peer_indexes<'a>(
+        &'a self,
         index: Index,
         group_type: CellGroupType,
     ) -> FlatMap<
-        Filter<Cloned<Iter<'_, CellGroup>>, impl FnMut(&CellGroup) -> bool>,
+        Cloned<Filter<Iter<'_, CellGroup>, impl FnMut(&&'a CellGroup) -> bool>>,
         IndexBitSetIter,
         fn(CellGroup) -> IndexBitSetIter,
     > {
         self.groups
             .iter()
+            .filter(move |&&g| g.contains(index) && g.group_type == group_type)
             .cloned()
-            .filter(move |&g| g.contains(index) && g.group_type == group_type)
             .flat_map(CellGroup::into_iter_indexes)
     }
 
