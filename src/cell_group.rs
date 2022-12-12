@@ -1,7 +1,7 @@
 use crate::index::{Index, IndexBitSet, IndexBitSetIter};
 use crate::prelude::Coordinate;
 use std::fmt::{Debug, Formatter};
-use std::iter::{Cloned, Filter, FlatMap};
+use std::iter::{Filter, FlatMap};
 use std::slice::Iter;
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -222,15 +222,14 @@ impl CellGroups {
         index: Index,
         group_type: CellGroupType,
     ) -> FlatMap<
-        Cloned<Filter<Iter<'_, CellGroup>, impl FnMut(&&'a CellGroup) -> bool>>,
+        Filter<Iter<'_, CellGroup>, impl FnMut(&&'a CellGroup) -> bool>,
         IndexBitSetIter,
-        fn(CellGroup) -> IndexBitSetIter,
+        fn(&CellGroup) -> IndexBitSetIter,
     > {
         self.groups
             .iter()
             .filter(move |&&g| g.contains(index) && g.group_type == group_type)
-            .cloned()
-            .flat_map(CellGroup::into_iter_indexes)
+            .flat_map(CellGroup::iter_indexes)
     }
 
     pub fn iter(&self) -> Iter<'_, CellGroup> {
