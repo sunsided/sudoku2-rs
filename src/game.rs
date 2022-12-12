@@ -1,5 +1,5 @@
 use crate::cell_group::CellGroups;
-use crate::prelude::GameState;
+use crate::GameState;
 
 /// A Sudoku game.
 pub struct Game {

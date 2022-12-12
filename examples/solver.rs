@@ -1,7 +1,7 @@
 use clap::{Arg, ArgGroup, Command};
 use std::time::Instant;
-use sudoku2::prelude::*;
 use sudoku2::visualization::{ascii::print_game_state, PrintAscii};
+use sudoku2::*;
 
 fn main() {
     // Enable logging with RUST_LOG=debug

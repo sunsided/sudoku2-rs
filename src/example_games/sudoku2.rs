@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 //noinspection DuplicatedCode
 /// Produces an example Sudoku game.

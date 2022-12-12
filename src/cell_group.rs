@@ -1,5 +1,5 @@
 use crate::index::{Index, IndexBitSet, IndexBitSetIter};
-use crate::prelude::Coordinate;
+use crate::Coordinate;
 use std::fmt::{Debug, Formatter};
 use std::iter::{Filter, FlatMap};
 use std::slice::Iter;

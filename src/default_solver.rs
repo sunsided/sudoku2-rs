@@ -1,8 +1,8 @@
 use crate::cell_group::{CellGroups, CollectIndexes};
 use crate::game_state::InvalidGameState;
 use crate::index::Index;
-use crate::prelude::GameState;
 use crate::strategies::{HiddenSingles, NakedSingles, NakedTwins, Strategy, StrategyResult};
+use crate::GameState;
 use log::debug;
 
 type PrintFn = fn(state: &GameState) -> ();

@@ -347,7 +347,7 @@ impl IntoValueOptions for [u8; 81] {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
+    use crate::*;
 
     #[test]
     fn with_value() {

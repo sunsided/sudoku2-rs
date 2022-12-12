@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 /// Produces an example Sudoku game.
 ///

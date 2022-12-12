@@ -1,8 +1,8 @@
 use crate::cell_group::{CellGroups, CollectIndexes};
 use crate::game_cell::GameCell;
 use crate::index::{Index, IndexBitSet};
-use crate::prelude::Coordinate;
 use crate::value::{IntoValueOptions, Value, ValueBitSet};
+use crate::Coordinate;
 use std::cell::Cell;
 use std::mem::MaybeUninit;
 
@@ -307,7 +307,7 @@ impl core::ops::Index<Coordinate> for GameState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::Value;
+    use crate::Value;
 
     //noinspection DuplicatedCode
     #[test]
