@@ -57,25 +57,18 @@ impl Strategy for NakedTwins {
             let mut possible_twins = Vec::default();
 
             // Find all possible twin candidates.
-            for group in groups
-                .get_groups_at_index(index_under_test)
-                .unwrap()
-                .iter()
-                .filter(|g| g.group_type == group_type)
-            {
-                for index in group.iter_indexes() {
-                    if observed_twins.contains(index) {
-                        continue;
-                    }
+            for index in groups.get_peer_indexes(index_under_test, group_type) {
+                if observed_twins.contains(index) {
+                    continue;
+                }
 
-                    let cell = state.get_at_index(index);
-                    if cell.len() != 2 {
-                        continue;
-                    }
+                let cell = state.get_at_index(index);
+                if cell.len() != 2 {
+                    continue;
+                }
 
-                    if cell.to_bitset().eq(cell_under_test.as_bitset()) {
-                        possible_twins.push(cell.into_indexed(index));
-                    }
+                if cell.to_bitset().eq(cell_under_test.as_bitset()) {
+                    possible_twins.push(cell.into_indexed(index));
                 }
             }
 
@@ -121,11 +114,7 @@ impl Strategy for NakedTwins {
             // The choice of the smaller or larger index here doesn't matter as they
             // are in the same group.
             for index in groups
-                .get_groups_at_index(twin.smaller)
-                .unwrap()
-                .iter()
-                .filter(|g| g.group_type == group_type)
-                .flat_map(|g| g.iter_indexes())
+                .get_peer_indexes(twin.smaller, group_type)
                 .filter(|&x| x != twin.smaller && x != twin.larger)
             {
                 applied_some |= state.forget_many_at_index(index, twin.values);

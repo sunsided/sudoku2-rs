@@ -57,11 +57,7 @@ impl Strategy for HiddenSingles {
 
             // Find all peers candidates.
             for index in groups
-                .get_groups_at_index(index_under_test)
-                .unwrap()
-                .iter()
-                .filter(|g| g.group_type == group_type)
-                .flat_map(|g| g.iter_indexes())
+                .get_peer_indexes(index_under_test, group_type)
                 .filter(|&i| i != index_under_test)
             {
                 debug_assert_ne!(index, index_under_test);

@@ -1,6 +1,7 @@
 use crate::index::{Index, IndexBitSet, IndexBitSetIter};
 use crate::prelude::Coordinate;
 use std::fmt::{Debug, Formatter};
+use std::iter::{Cloned, Filter, FlatMap};
 use std::slice::Iter;
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -216,6 +217,22 @@ impl CellGroups {
         }
     }
 
+    pub fn get_peer_indexes(
+        &self,
+        index: Index,
+        group_type: CellGroupType,
+    ) -> FlatMap<
+        Filter<Cloned<Iter<'_, CellGroup>>, impl FnMut(&CellGroup) -> bool>,
+        IndexBitSetIter,
+        fn(CellGroup) -> IndexBitSetIter,
+    > {
+        self.groups
+            .iter()
+            .cloned()
+            .filter(move |&g| g.contains(index) && g.group_type == group_type)
+            .flat_map(CellGroup::into_iter_indexes)
+    }
+
     pub fn iter(&self) -> Iter<'_, CellGroup> {
         self.groups.iter()
     }
@@ -323,6 +340,12 @@ impl CellGroup {
     /// Iterates all indexes for this cell group.
     #[inline]
     pub fn iter_indexes(&self) -> IndexBitSetIter {
+        self.indexes.iter()
+    }
+
+    /// Iterates all indexes for this cell group.
+    #[inline]
+    pub fn into_iter_indexes(self) -> IndexBitSetIter {
         self.indexes.iter()
     }
 }
