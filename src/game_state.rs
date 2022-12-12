@@ -177,7 +177,7 @@ impl GameState {
     /// Forgets a value at the specified cell. No changes will be propagated,
     /// but the cell will be treated as if the value was never an option.
     #[inline]
-    pub fn forget_many_at_index(&self, index: Index, values: &ValueBitSet) -> bool {
+    pub fn forget_many_at_index(&self, index: Index, values: ValueBitSet) -> bool {
         let cell = self.cell_at_index(index);
         let gc = cell.get();
         if gc.contains_some(values) {
@@ -245,8 +245,7 @@ impl GameState {
         }
 
         // Ensure values appear only once.
-        for index_under_test in 0..81 {
-            let index_under_test = Index::new(index_under_test);
+        for index_under_test in Index::range() {
             let cell_under_test = self.get_at_index(index_under_test);
 
             // Consider only cells with exactly one value.
@@ -255,7 +254,7 @@ impl GameState {
                 continue;
             }
 
-            let cell_under_test = cell_under_test.as_bitset();
+            let cell_under_test = cell_under_test.to_bitset();
             let mut seen_indexes = IndexBitSet::empty().with_index(index_under_test);
 
             let groups = groups
@@ -275,7 +274,7 @@ impl GameState {
                     continue;
                 }
 
-                let cell_set = cell.as_bitset();
+                let cell_set = cell.to_bitset();
                 if cell_under_test.contains_all(cell_set) {
                     return false;
                 }

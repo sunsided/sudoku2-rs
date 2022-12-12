@@ -76,13 +76,13 @@ impl GameCell {
 
     /// Determines whether this cell contains at least one of the specified values.
     #[inline]
-    pub const fn contains_some(&self, values: &ValueBitSet) -> bool {
+    pub const fn contains_some(&self, values: ValueBitSet) -> bool {
         self.possible_values.contains_some(values)
     }
 
     /// Determines whether this cell contains at least one of the specified values.
     #[inline]
-    pub const fn contains_all(&self, values: &ValueBitSet) -> bool {
+    pub const fn contains_all(&self, values: ValueBitSet) -> bool {
         self.possible_values.contains_all(values)
     }
 
@@ -109,7 +109,7 @@ impl GameCell {
 
     /// Removes a candidate from this cell.
     #[inline]
-    pub fn without_values(mut self, values: &ValueBitSet) -> Self {
+    pub fn without_values(mut self, values: ValueBitSet) -> Self {
         self.possible_values.remove_many(values);
         self
     }
@@ -152,6 +152,12 @@ impl GameCell {
     #[inline]
     pub fn as_bitset(&self) -> &ValueBitSet {
         &self.possible_values
+    }
+
+    /// Gets the possible values as a bitset.
+    #[inline]
+    pub fn to_bitset(&self) -> ValueBitSet {
+        self.possible_values
     }
 
     /// Iterates all possible values for this cell.

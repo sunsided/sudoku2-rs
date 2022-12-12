@@ -73,7 +73,7 @@ impl Strategy for NakedTwins {
                         continue;
                     }
 
-                    if cell.as_bitset().eq(cell_under_test.as_bitset()) {
+                    if cell.to_bitset().eq(cell_under_test.as_bitset()) {
                         possible_twins.push(cell.into_indexed(index));
                     }
                 }
@@ -102,12 +102,12 @@ impl Strategy for NakedTwins {
                 group_type = group_type,
                 a = index_under_test.min(other_twin.index),
                 b = index_under_test.max(other_twin.index),
-                values = other_twin.as_bitset()
+                values = other_twin.to_bitset()
             );
             twins_to_remove.push(TwinPair {
                 smaller: index_under_test.min(other_twin.index),
                 larger: index_under_test.max(other_twin.index),
-                values: other_twin.as_bitset().clone(),
+                values: other_twin.to_bitset(),
             });
         }
 
@@ -128,7 +128,7 @@ impl Strategy for NakedTwins {
                 .flat_map(|g| g.iter_indexes())
                 .filter(|&x| x != twin.smaller && x != twin.larger)
             {
-                applied_some |= state.forget_many_at_index(index, &twin.values);
+                applied_some |= state.forget_many_at_index(index, twin.values);
             }
         }
 

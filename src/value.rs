@@ -145,7 +145,7 @@ impl ValueBitSet {
     }
 
     #[inline]
-    pub fn remove_many(&mut self, values: &ValueBitSet) -> &mut Self {
+    pub fn remove_many(&mut self, values: ValueBitSet) -> &mut Self {
         self.state &= (!values.state) & Self::MASK;
         self
     }
@@ -161,13 +161,13 @@ impl ValueBitSet {
     }
 
     #[inline]
-    pub const fn with_union(mut self, other: &ValueBitSet) -> Self {
+    pub const fn with_union(mut self, other: ValueBitSet) -> Self {
         self.state |= other.state & Self::MASK;
         self
     }
 
     #[inline]
-    pub fn union(&mut self, other: &ValueBitSet) -> &mut Self {
+    pub fn union(&mut self, other: ValueBitSet) -> &mut Self {
         self.state |= other.state & Self::MASK;
         self
     }
@@ -191,12 +191,12 @@ impl ValueBitSet {
     }
 
     #[inline]
-    pub const fn contains_all(&self, values: &ValueBitSet) -> bool {
+    pub const fn contains_all(&self, values: ValueBitSet) -> bool {
         (self.state & values.state) == values.state
     }
 
     #[inline]
-    pub const fn contains_some(&self, values: &ValueBitSet) -> bool {
+    pub const fn contains_some(&self, values: ValueBitSet) -> bool {
         (self.state & values.state) != 0
     }
 
@@ -390,7 +390,7 @@ mod tests {
 
         let bitset_a = ValueBitSet::default().with_value(a);
         let bitset_b = ValueBitSet::default().with_value(b);
-        let bitset = bitset_a.with_union(&bitset_b);
+        let bitset = bitset_a.with_union(bitset_b);
 
         assert!(bitset.contains(a));
         assert!(bitset.contains(b));
@@ -498,7 +498,7 @@ mod tests {
             .with_value(b)
             .with_value(c);
         let remove = ValueBitSet::default().with_value(a).with_value(b);
-        bitset.remove_many(&remove);
+        bitset.remove_many(remove);
 
         assert!(!bitset.contains(a));
         assert!(!bitset.contains(b));
@@ -519,7 +519,7 @@ mod tests {
         assert!(!bitset.is_exactly(c));
 
         let remove = ValueBitSet::default().with_value(a).with_value(b);
-        bitset.remove_many(&remove);
+        bitset.remove_many(remove);
 
         assert!(bitset.contains(c));
         assert!(bitset.is_exactly(c));
@@ -538,7 +538,7 @@ mod tests {
         assert!(bitset.as_single_value().is_none());
 
         let remove = ValueBitSet::default().with_value(a).with_value(b);
-        bitset.remove_many(&remove);
+        bitset.remove_many(remove);
 
         assert_eq!(bitset.as_single_value(), Some(c));
     }

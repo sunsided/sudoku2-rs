@@ -53,7 +53,7 @@ impl Strategy for HiddenSingles {
 
             // By taking the intersection with each peer, we will isolate
             // values that appear only in this cell and nowhere else.
-            let mut values = cell_under_test.as_bitset().clone();
+            let mut values = cell_under_test.to_bitset();
 
             // Find all peers candidates.
             for index in groups
@@ -65,7 +65,7 @@ impl Strategy for HiddenSingles {
                 .filter(|&i| i != index_under_test)
             {
                 debug_assert_ne!(index, index_under_test);
-                values.remove_many(state.get_at_index(index).as_bitset());
+                values.remove_many(state.get_at_index(index).to_bitset());
             }
 
             if let Some(value) = values.as_single_value() {
