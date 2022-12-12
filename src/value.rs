@@ -32,8 +32,10 @@ impl Value {
     }
 
     /// Uses [`NonZeroU8::new_unchecked`] to construct the value.
-    const unsafe fn new_unchecked(index: u8) -> Self {
-        Self::new(NonZeroU8::new_unchecked(index))
+    #[inline]
+    const unsafe fn new_unchecked(value: u8) -> Self {
+        debug_assert!(value > 0 && value <= 9);
+        Self(NonZeroU8::new_unchecked(value))
     }
 
     /// Gets the underlying [`u8`] value.
@@ -45,6 +47,7 @@ impl Value {
 impl Deref for Value {
     type Target = NonZeroU8;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -335,7 +338,7 @@ impl IntoValueOptions for [u8; 81] {
             match v {
                 10.. => panic!("An invalid value was specified"),
                 0 => values[i] = None,
-                x => values[i] = Some(Value::try_from(x).unwrap()),
+                x => values[i] = Some(unsafe { Value::new_unchecked(x) }),
             }
         }
         values
