@@ -165,9 +165,9 @@ impl IndexBitSet {
     }
 
     #[inline]
-    pub fn iter(&self) -> IndexBitSetIter {
+    pub const fn iter(&self) -> IndexBitSetIter {
         IndexBitSetIter {
-            value: self.clone(),
+            value: *self,
             index: 0,
         }
     }
@@ -199,6 +199,7 @@ impl IntoIterator for IndexBitSet {
     type Item = Index;
     type IntoIter = IndexBitSetIter;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }

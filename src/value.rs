@@ -93,7 +93,7 @@ impl ValueBitSet {
     }
 
     pub const fn all_values() -> Self {
-        Self { state: 0 }
+        Self::empty()
             .with_value(Value::ONE)
             .with_value(Value::TWO)
             .with_value(Value::THREE)
@@ -209,9 +209,9 @@ impl ValueBitSet {
     }
 
     #[inline]
-    pub fn iter(&self) -> ValueBitSetIter {
+    pub const fn iter(&self) -> ValueBitSetIter {
         ValueBitSetIter {
-            value: self,
+            value: *self,
             index: 0,
         }
     }
@@ -220,7 +220,6 @@ impl ValueBitSet {
     ///
     /// ## Returns
     /// Returns [`Some`] value or [`None`] if this set encodes zero or more than one value.
-    #[inline]
     pub const fn as_single_value(&self) -> Option<Value> {
         // Need to test here, will produce attempt to left shift with overflow otherwise.
         if self.state == 0 {
@@ -252,12 +251,22 @@ impl From<&[u8]> for ValueBitSet {
     }
 }
 
-pub struct ValueBitSetIter<'a> {
-    value: &'a ValueBitSet,
+pub struct ValueBitSetIter {
+    value: ValueBitSet,
     index: u8,
 }
 
-impl<'a> Iterator for ValueBitSetIter<'a> {
+impl IntoIterator for ValueBitSet {
+    type Item = Value;
+    type IntoIter = ValueBitSetIter;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl Iterator for ValueBitSetIter {
     type Item = Value;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -421,7 +430,7 @@ mod tests {
         let b = Value::try_from(5).unwrap();
 
         let bitset = ValueBitSet::default().with_value(a).with_value(b);
-        let mut iter = bitset.iter();
+        let mut iter = bitset.into_iter();
 
         assert_eq!(iter.next(), Some(b));
         assert_eq!(iter.next(), Some(a));
@@ -432,7 +441,7 @@ mod tests {
     #[test]
     fn iter_test() {
         let bitset = ValueBitSet { state: 16 };
-        let mut iter = bitset.iter();
+        let mut iter = bitset.into_iter();
 
         assert_eq!(iter.next(), Some(Value::FIVE));
         assert_eq!(iter.next(), None);
@@ -455,7 +464,7 @@ mod tests {
         assert!(set.contains(Value::EIGHT));
         assert!(set.contains(Value::NINE));
 
-        let values: Vec<_> = set.iter().collect();
+        let values: Vec<_> = set.into_iter().collect();
         assert!(values.contains(&Value::ONE));
         assert!(values.contains(&Value::TWO));
         assert!(values.contains(&Value::THREE));
