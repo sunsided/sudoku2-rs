@@ -75,7 +75,7 @@ impl GameState {
         let mut changed = self.set_at_index(index, value);
 
         let groups = groups
-            .get_at_index(index, CollectIndexes::ExcludeSelf)
+            .get_peers_at_index(index, CollectIndexes::ExcludeSelf)
             .expect("group does not exist at index");
 
         // Propagate changes through peers.
@@ -219,7 +219,7 @@ impl GameState {
             let value = cell.iter_candidates().next().unwrap();
 
             let groups = groups
-                .get_at_index(index, CollectIndexes::ExcludeSelf)
+                .get_peers_at_index(index, CollectIndexes::ExcludeSelf)
                 .expect("no groups found for specified index");
             for peer_index in groups.iter().filter(|x| *x > index) {
                 let peer_cell = self.get_at_index(peer_index);
@@ -258,7 +258,7 @@ impl GameState {
             let mut seen_indexes = IndexBitSet::empty().with_index(index_under_test);
 
             let groups = groups
-                .get_at_index(index_under_test, CollectIndexes::IncludeSelf)
+                .get_peers_at_index(index_under_test, CollectIndexes::IncludeSelf)
                 .unwrap();
             for index in groups.iter() {
                 // Only process the indexes once.

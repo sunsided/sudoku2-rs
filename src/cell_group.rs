@@ -161,10 +161,10 @@ impl CellGroups {
         coord: Coordinate,
         mode: CollectIndexes,
     ) -> Result<IndexBitSet, NoMatchingGroup> {
-        self.get_at_index(coord.into(), mode)
+        self.get_peers_at_index(coord.into(), mode)
     }
 
-    pub fn get_at_index(
+    pub fn get_peers_at_index(
         &self,
         index: Index,
         mode: CollectIndexes,

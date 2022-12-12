@@ -54,9 +54,9 @@ impl Strategy for NakedSingles {
 
             // Find all peers candidates.
             for index in groups
-                .get_at_index(index_under_test, CollectIndexes::ExcludeSelf)
+                .get_peers_at_index(index_under_test, CollectIndexes::ExcludeSelf)
                 .unwrap()
-                .iter()
+                .into_iter()
             {
                 debug_assert_ne!(index, index_under_test);
                 if state.forget_many_at_index(index, cell_under_test.to_bitset()) {

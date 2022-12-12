@@ -182,7 +182,7 @@ impl DefaultSolver {
             let mut group_smallest = SmallestIndex::default();
             for index in self
                 .groups
-                .get_at_index(index_under_test, CollectIndexes::IncludeSelf)
+                .get_peers_at_index(index_under_test, CollectIndexes::IncludeSelf)
                 .unwrap()
                 .iter()
             {
