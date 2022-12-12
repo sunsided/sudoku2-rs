@@ -6,8 +6,14 @@ Unlike the previous experiment, this solver correctly solves Hypersudokus and re
 Internally, value candidates and indexes are encoded via 16- and 128-bit bitsets ([ValueBitSet], [IndexBitSet]),
 reducing the overhead for constructing and testing hashsets.
 
+Currently implemented strategies are [Naked Singles], [Hidden Singles] and [Naked Twins].
+
 [ValueBitSet]: src/value.rs
 [IndexBitSet]: src/index.rs
+
+[Naked Singles]: src/strategies/naked_singles.rs
+[Hidden Singles]: src/strategies/hidden_singles.rs
+[Naked Twins]: src/strategies/naked_twins.rs
 
 To show the available options for the example, execute:
 
