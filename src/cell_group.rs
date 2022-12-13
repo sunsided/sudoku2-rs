@@ -129,10 +129,10 @@ impl CellGroups {
     }
 
     pub fn with_hypersudoku_windows(self) -> Self {
-        self.with_group(CellGroup::from_iter([10, 11, 12, 19, 20, 21, 28, 29, 30]))
-            .with_group(CellGroup::from_iter([14, 15, 16, 23, 24, 25, 32, 33, 34]))
-            .with_group(CellGroup::from_iter([46, 47, 48, 55, 56, 57, 64, 65, 66]))
-            .with_group(CellGroup::from_iter([50, 51, 52, 59, 60, 61, 68, 69, 70]))
+        self.with_group_from_iter([10, 11, 12, 19, 20, 21, 28, 29, 30])
+            .with_group_from_iter([14, 15, 16, 23, 24, 25, 32, 33, 34])
+            .with_group_from_iter([46, 47, 48, 55, 56, 57, 64, 65, 66])
+            .with_group_from_iter([50, 51, 52, 59, 60, 61, 68, 69, 70])
     }
 
     #[inline]
@@ -224,9 +224,22 @@ impl CellGroups {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-#[error("The specified group overlaps with an already existing group")]
-pub struct OverlappingGroups {}
+/// A convenience trait for registering a [`CellGroup`] constructed from an iterator.
+pub trait WithGroupFromIterator<A>: Sized {
+    fn with_group_from_iter<T: IntoIterator<Item = A>>(self, iter: T) -> Self;
+}
+
+impl WithGroupFromIterator<Index> for CellGroups {
+    fn with_group_from_iter<T: IntoIterator<Item = Index>>(self, iter: T) -> Self {
+        self.with_group(CellGroup::from_iter(iter))
+    }
+}
+
+impl WithGroupFromIterator<u8> for CellGroups {
+    fn with_group_from_iter<T: IntoIterator<Item = u8>>(self, iter: T) -> Self {
+        self.with_group(CellGroup::from_iter(iter))
+    }
+}
 
 #[derive(Debug, thiserror::Error)]
 #[error("No matching group was found")]
