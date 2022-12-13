@@ -14,6 +14,8 @@ fn main() {
         example_games::sudoku2::example_sudoku()
     } else if matches.get_flag("normal-xwing") {
         example_games::sudoku_xwings::example_sudoku()
+    } else if matches.get_flag("normal-hardest") {
+        example_games::sudoku2::example_sudoku_hardest()
     } else if matches.get_flag("nonomino") {
         example_games::nonomino::example_nonomino()
     } else if matches.get_flag("hypersudoku") {
@@ -88,6 +90,14 @@ pub fn build_command() -> Command {
             Arg::new("normal-xwing")
                 .long("sudoku-xwing")
                 .help("Solve a regular Sudoku with known X-Wings")
+                .action(clap::ArgAction::SetTrue)
+                .help_heading("Game type")
+                .group("type"),
+        )
+        .arg(
+            Arg::new("normal-hardest")
+                .long("sudoku-hardest")
+                .help("Solve a Sudoku of \"hardest\" difficulty")
                 .action(clap::ArgAction::SetTrue)
                 .help_heading("Game type")
                 .group("type"),

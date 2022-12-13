@@ -46,3 +46,48 @@ pub fn example_sudoku() -> Game {
         expected_solution: None,
     }
 }
+
+/// Produces an example Sudoku game.
+///
+/// ## Initial state
+/// ```plain
+///     · 9 ·   · · 2   · · ·
+///     · · ·   7 · ·   · 8 ·
+///     · 5 4   · 3 ·   7 · ·
+///
+///     6 · ·   · · ·   · · ·
+///     · · ·   · · 1   · · 2
+///     · 7 3   · 5 ·   8 · ·
+///
+///     9 · ·   · · ·   4 · ·
+///     8 · ·   · 6 ·   · · ·
+///     · 4 6   · · 5   · 1 ·
+/// ```
+//noinspection DuplicatedCode
+#[rustfmt::skip]
+pub fn example_sudoku_hardest() -> Game {
+    let groups = CellGroups::default()
+        .with_default_sudoku_blocks()
+        .with_default_rows_and_columns();
+
+    let x = 0u8;
+    let state = GameState::new_from([
+        x, 9, x,   x, x, 2,   x, x, x,
+        x, x, x,   7, x, x,   x, 8, x,
+        x, 5, 4,   x, 3, x,   7, x, x,
+
+        6, x, x,   x, x, x,   x, x, x,
+        x, x, x,   x, x, 1,   x, x, 2,
+        x, 7, 3,   x, 5, x,   8, x, x,
+
+        9, x, x,   x, x, x,   4, x, x,
+        8, x, x,   x, 6, x,   x, x, x,
+        x, 4, 6,   x, x, 5,   x, 1, x
+    ]);
+
+    Game {
+        initial_state: state,
+        groups,
+        expected_solution: None,
+    }
+}

@@ -19,6 +19,14 @@ fn criterion_benchmark(c: &mut Criterion) {
     }
 
     {
+        let sudoku_game = example_games::sudoku2::example_sudoku_hardest();
+        let sudoku_solver = DefaultSolver::new(&sudoku_game.groups);
+        c.bench_function("sudoku-hardest", |b| {
+            b.iter(|| sudoku_solver.solve(black_box(&sudoku_game.initial_state)))
+        });
+    }
+
+    {
         let nonomino_game = example_games::nonomino::example_nonomino();
         let nonomino_solver = DefaultSolver::new(&nonomino_game.groups);
         c.bench_function("nonomino", |b| {

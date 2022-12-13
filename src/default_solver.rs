@@ -305,4 +305,16 @@ mod tests {
         assert!(solution.is_consistent(&game.groups));
         assert!(solution.is_solved(&game.groups));
     }
+
+    #[test]
+    fn solving_hardest() {
+        let game = crate::example_games::sudoku2::example_sudoku_hardest();
+        let solver = DefaultSolver::new(&game);
+        let result = solver.solve(&game);
+        assert!(result.is_ok());
+
+        let solution = result.unwrap();
+        assert!(solution.is_consistent(&game.groups));
+        assert!(solution.is_solved(&game.groups));
+    }
 }

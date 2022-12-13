@@ -49,6 +49,7 @@ Other board variations with known Hidden Twins or X-Wings are available with:
 ```bash
 $ cargo run --release --example solver -- --sudoku-ht
 $ cargo run --release --example solver -- --sudoku-xwing
+$ cargo run --release --example solver -- --sudoku-hardest
 ```
 
 ### Cell groups
