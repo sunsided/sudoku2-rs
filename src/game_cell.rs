@@ -1,5 +1,7 @@
 use crate::index::Index;
 use crate::value::{Value, ValueBitSet, ValueBitSetIter};
+use crate::Coordinate;
+use std::array::IntoIter;
 use std::ops::{Deref, DerefMut};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -51,6 +53,16 @@ impl IndexedGameCell {
             index,
             inner: GameCell::default(),
         }
+    }
+
+    #[inline]
+    pub fn as_coordinate(&self) -> Coordinate {
+        self.index.into()
+    }
+
+    #[inline]
+    pub fn to_coordinate(self) -> Coordinate {
+        self.index.into()
     }
 }
 

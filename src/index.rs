@@ -15,7 +15,7 @@ impl Index {
     }
 
     #[inline]
-    pub fn range() -> Map<Range<u8>, fn(u8) -> Index> {
+    pub fn range() -> impl Iterator<Item = Index> {
         (0..81).map(Index::new)
     }
 }

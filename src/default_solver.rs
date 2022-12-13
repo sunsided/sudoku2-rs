@@ -1,7 +1,7 @@
 use crate::cell_group::{CellGroups, CollectIndexes};
 use crate::game_state::InvalidGameState;
 use crate::index::Index;
-use crate::strategies::{HiddenSingles, NakedSingles, NakedTwins, Strategy, StrategyResult};
+use crate::strategies::{HiddenSingles, NakedSingles, NakedTwins, Strategy, StrategyResult, XWing};
 use crate::GameState;
 use log::debug;
 
@@ -35,6 +35,7 @@ impl Default for SmallestIndex {
 impl DefaultSolver {
     pub fn new<G: AsRef<CellGroups>>(groups: G) -> Self {
         let strategies: Vec<Box<dyn Strategy>> = vec![
+            XWing::new_box(),
             NakedSingles::new_box(),
             HiddenSingles::new_box(),
             NakedTwins::new_box(),
