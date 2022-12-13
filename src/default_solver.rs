@@ -272,7 +272,7 @@ mod tests {
 
     #[test]
     fn solving_sudoku_with_naked_xwings() {
-        let game = crate::example_games::sudoku3::example_sudoku();
+        let game = crate::example_games::sudoku_xwings::example_sudoku();
         let solver = DefaultSolver::new(&game);
         let result = solver.solve(&game);
         assert!(result.is_ok());

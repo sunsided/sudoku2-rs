@@ -1,9 +1,9 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use sudoku2::prelude::DefaultSolver;
+use sudoku2::{example_games, DefaultSolver};
 
 fn criterion_benchmark(c: &mut Criterion) {
     {
-        let sudoku_game = sudoku2::example_games::sudoku::example_sudoku();
+        let sudoku_game = example_games::sudoku::example_sudoku();
         let sudoku_solver = DefaultSolver::new(&sudoku_game.groups);
         c.bench_function("sudoku", |b| {
             b.iter(|| sudoku_solver.solve(black_box(&sudoku_game.initial_state)))
@@ -11,7 +11,15 @@ fn criterion_benchmark(c: &mut Criterion) {
     }
 
     {
-        let nonomino_game = sudoku2::example_games::nonomino::example_nonomino();
+        let sudoku_game = example_games::sudoku_xwings::example_sudoku();
+        let sudoku_solver = DefaultSolver::new(&sudoku_game.groups);
+        c.bench_function("sudoku-xwings", |b| {
+            b.iter(|| sudoku_solver.solve(black_box(&sudoku_game.initial_state)))
+        });
+    }
+
+    {
+        let nonomino_game = example_games::nonomino::example_nonomino();
         let nonomino_solver = DefaultSolver::new(&nonomino_game.groups);
         c.bench_function("nonomino", |b| {
             b.iter(|| nonomino_solver.solve(black_box(&nonomino_game.initial_state)))
@@ -19,7 +27,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     }
 
     {
-        let hypersudoku_game = sudoku2::example_games::hypersudoku::example_hypersudoku();
+        let hypersudoku_game = example_games::hypersudoku::example_hypersudoku();
         let hypersudoku_solver = DefaultSolver::new(&hypersudoku_game.groups);
         c.bench_function("hypersudoku", |b| {
             b.iter(|| hypersudoku_solver.solve(black_box(&hypersudoku_game.initial_state)))

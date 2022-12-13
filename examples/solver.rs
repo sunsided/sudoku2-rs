@@ -13,7 +13,7 @@ fn main() {
     let game = if matches.get_flag("normal-ht") {
         example_games::sudoku2::example_sudoku()
     } else if matches.get_flag("normal-xwing") {
-        example_games::sudoku3::example_sudoku()
+        example_games::sudoku_xwings::example_sudoku()
     } else if matches.get_flag("nonomino") {
         example_games::nonomino::example_nonomino()
     } else if matches.get_flag("hypersudoku") {

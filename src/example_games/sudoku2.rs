@@ -16,6 +16,7 @@ use crate::*;
 ///     · · ·   8 6 ·   1 4 ·
 ///     · · ·   3 · ·   7 · ·
 /// ```
+//noinspection DuplicatedCode
 #[rustfmt::skip]
 pub fn example_sudoku() -> Game {
     let groups = CellGroups::default()
