@@ -1,7 +1,6 @@
 use crate::coordinate::Coordinate;
 use std::fmt::{Debug, Formatter};
-use std::iter::Map;
-use std::ops::{Deref, Range};
+use std::ops::Deref;
 
 /// A classical Sudoku index, ranging 0..=80 for 81 fields.
 #[derive(Default, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -184,11 +183,10 @@ impl From<&[u8]> for IndexBitSet {
     }
 }
 
-impl From<&[Index]> for IndexBitSet {
-    #[inline]
-    fn from(values: &[Index]) -> Self {
+impl FromIterator<Index> for IndexBitSet {
+    fn from_iter<T: IntoIterator<Item = Index>>(iter: T) -> Self {
         let mut state = 0u128;
-        for value in values {
+        for value in iter {
             state |= 1u128 << value.0;
         }
         Self { state }
@@ -306,7 +304,7 @@ mod tests {
         let b = Index::new(17);
         let c = Index::new(2);
 
-        let bitset = IndexBitSet::from([a, b].as_slice());
+        let bitset = IndexBitSet::from_iter([a, b]);
 
         assert!(bitset.contains(a));
         assert!(bitset.contains(b));

@@ -35,10 +35,10 @@ impl Default for SmallestIndex {
 impl DefaultSolver {
     pub fn new<G: AsRef<CellGroups>>(groups: G) -> Self {
         let strategies: Vec<Box<dyn Strategy>> = vec![
-            XWing::new_box(),
             NakedSingles::new_box(),
             HiddenSingles::new_box(),
             NakedTwins::new_box(),
+            XWing::new_box(),
         ];
 
         Self {
@@ -261,6 +261,18 @@ mod tests {
     #[test]
     fn solving_sudoku_with_naked_twins() {
         let game = crate::example_games::sudoku::example_sudoku_naked_twins();
+        let solver = DefaultSolver::new(&game);
+        let result = solver.solve(&game);
+        assert!(result.is_ok());
+
+        let solution = result.unwrap();
+        assert!(solution.is_consistent(&game.groups));
+        assert!(solution.is_solved(&game.groups));
+    }
+
+    #[test]
+    fn solving_sudoku_with_naked_xwings() {
+        let game = crate::example_games::sudoku3::example_sudoku();
         let solver = DefaultSolver::new(&game);
         let result = solver.solve(&game);
         assert!(result.is_ok());

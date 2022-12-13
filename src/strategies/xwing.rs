@@ -2,9 +2,8 @@ use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::{Index, IndexBitSet};
 use crate::strategies::{Strategy, StrategyResult};
-use crate::value::ValueBitSet;
-use crate::{index, Coordinate, IndexedGameCell, Value};
-use log::debug;
+use crate::{Coordinate, Value};
+use log::{debug, trace};
 use std::fmt::{Debug, Formatter};
 
 /// Identifies and realizes the X-Wing strategy.
@@ -33,78 +32,83 @@ impl Strategy for XWing {
         state: &GameState,
         groups: &CellGroups,
     ) -> Result<StrategyResult, InvalidGameState> {
-        let mut xwings = Vec::default();
+        let mut xwings: Vec<XWingCoords> = Vec::default();
 
         for value in Value::range() {
             // Identify all the cells that are not solved and contain the value under test.
-            let cells: Vec<_> = Index::range()
-                .map(|index| state.get_at_index(index).into_indexed(index))
-                .filter(|cell| !cell.is_solved() && cell.contains(value))
-                .collect();
+            let indexes = IndexBitSet::from_iter(Index::range().filter(|&index| {
+                let cell = state.get_at_index(index);
+                !cell.is_solved() && cell.contains(value)
+            }));
 
             // For the X-Wing to work, we need at least four matching cells
             // in order to form a single rectangle.
-            if cells.len() < 4 {
+            if indexes.len() < 4 {
                 return Ok(StrategyResult::NoChange);
             }
 
-            // Identify pairs in the same row or column.
-            for top_left_coord in cells.iter().map(IndexedGameCell::as_coordinate) {
-                // Ignore all cells that lie on the right or bottom edge as they
-                // cannot form a rectangle to the bottom right.
-                if top_left_coord.x == 8 || top_left_coord.y == 8 {
-                    continue;
-                }
+            // For each matching cell, scan for rectangles.
+            for tl in indexes {
+                let tl: Coordinate = tl.into();
 
-                // Find all matching cells to the right.
-                let top_right_coords: Vec<_> = cells
-                    .iter()
-                    .map(IndexedGameCell::as_coordinate)
-                    .filter(|coord| coord.x > top_left_coord.x && coord.y == top_left_coord.y)
-                    .collect();
-                if top_right_coords.is_empty() {
-                    continue;
-                }
+                for x in (tl.x + 1)..9 {
+                    for y in (tl.y + 1)..9 {
+                        let tr = Coordinate::new(x, tl.y);
+                        let bl = Coordinate::new(tl.x, y);
+                        let br = Coordinate::new(x, y);
 
-                // Find all matching cells to the bottom.
-                let bottom_left_coords: Vec<_> = cells
-                    .iter()
-                    .map(IndexedGameCell::as_coordinate)
-                    .filter(|coord| coord.x == top_left_coord.x && coord.y > top_left_coord.y)
-                    .collect();
-                if bottom_left_coords.is_empty() {
-                    continue;
-                }
+                        let has_tl = indexes.contains(tr.into());
+                        let has_bl = indexes.contains(bl.into());
+                        let has_br = indexes.contains(br.into());
 
-                // Scan down from every peer on the right.
-                for &top_right_coord in top_right_coords.iter() {
-                    for bottom_right_coord in cells
-                        .iter()
-                        .map(IndexedGameCell::as_coordinate)
-                        .filter(|coord| coord.x == top_right_coord.x && coord.y > top_right_coord.y)
-                    {
-                        // Test if there is a match on any y coordinate of the peers
-                        // on the bottom of the test cell.
-                        for &bottom_left_coord in bottom_left_coords
-                            .iter()
-                            .filter(|coord| coord.y == bottom_right_coord.y)
-                        {
-                            debug!(
-                                "Identified X-Wing for value {value:?} at {tl:?}, {tr:?}, {bl:?}, {br:?}",
-                                value = value,
-                                tl = top_left_coord,
-                                tr = top_right_coord,
-                                bl = bottom_left_coord,
-                                br = bottom_right_coord
-                            );
-                            xwings.push(XWingCoords {
-                                value,
-                                top_left: top_left_coord.into(),
-                                top_right: top_right_coord.into(),
-                                bottom_left: bottom_left_coord.into(),
-                                bottom_right: bottom_right_coord.into(),
-                            })
+                        // Ensure we found a rectangle.
+                        if !(has_tl && has_bl && has_br) {
+                            continue;
                         }
+
+                        // Ensure that only two matches exist in both rows OR both columns.
+                        let mut top_count = 0;
+                        let mut bottom_count = 0;
+                        let mut left_count = 0;
+                        let mut right_count = 0;
+                        for x in 0..9 {
+                            if indexes.contains(Coordinate::new(x, tr.y).into()) {
+                                top_count += 1;
+                            }
+                            if indexes.contains(Coordinate::new(x, br.y).into()) {
+                                bottom_count += 1;
+                            }
+                        }
+                        for y in 0..9 {
+                            if indexes.contains(Coordinate::new(tl.x, y).into()) {
+                                left_count += 1;
+                            }
+                            if indexes.contains(Coordinate::new(br.x, y).into()) {
+                                right_count += 1;
+                            }
+                        }
+
+                        if !(left_count == 2 && right_count == 2)
+                            && !(top_count == 2 && bottom_count == 2)
+                        {
+                            continue;
+                        }
+
+                        trace!(
+                            "Identified X-Wing for value {value:?} at {tl:?}, {tr:?}, {bl:?}, {br:?}",
+                            value = value,
+                            tl = tl,
+                            tr = tr,
+                            bl = bl,
+                            br = br
+                        );
+                        xwings.push(XWingCoords {
+                            value,
+                            top_left: tl.into(),
+                            top_right: tr.into(),
+                            bottom_left: bl.into(),
+                            bottom_right: br.into(),
+                        })
                     }
                 }
             }
@@ -121,12 +125,14 @@ impl Strategy for XWing {
             debug_assert!(xwing.top_right != xwing.bottom_right);
             debug_assert!(xwing.top_right != xwing.bottom_left);
 
+            let mut applied_xwing = false;
+
             // Forget top row.
             for index in groups
                 .get_peer_indexes(xwing.top_left, CellGroupType::StandardRow)
                 .filter(|&idx| idx != xwing.top_left && idx != xwing.top_right)
             {
-                applied_some |= state.forget_at_index(index, xwing.value);
+                applied_xwing |= state.forget_at_index(index, xwing.value);
             }
 
             // Forget in bottom row.
@@ -134,7 +140,7 @@ impl Strategy for XWing {
                 .get_peer_indexes(xwing.bottom_left, CellGroupType::StandardRow)
                 .filter(|&idx| idx != xwing.bottom_left && idx != xwing.bottom_right)
             {
-                applied_some |= state.forget_at_index(index, xwing.value);
+                applied_xwing |= state.forget_at_index(index, xwing.value);
             }
 
             // Forget left column.
@@ -142,15 +148,28 @@ impl Strategy for XWing {
                 .get_peer_indexes(xwing.top_left, CellGroupType::StandardColumn)
                 .filter(|&idx| idx != xwing.top_left && idx != xwing.bottom_left)
             {
-                applied_some |= state.forget_at_index(index, xwing.value);
+                applied_xwing |= state.forget_at_index(index, xwing.value);
             }
 
             // Forget right column.
             for index in groups
-                .get_peer_indexes(xwing.top_left, CellGroupType::StandardColumn)
+                .get_peer_indexes(xwing.top_right, CellGroupType::StandardColumn)
                 .filter(|&idx| idx != xwing.top_right && idx != xwing.bottom_right)
             {
-                applied_some |= state.forget_at_index(index, xwing.value);
+                applied_xwing |= state.forget_at_index(index, xwing.value);
+            }
+
+            applied_some |= applied_xwing;
+
+            if applied_xwing {
+                debug!(
+                    "Applied X-Wing for value {value:?} at {tl:?}, {tr:?}, {bl:?}, {br:?}",
+                    value = xwing.value,
+                    tl = xwing.top_left,
+                    tr = xwing.top_right,
+                    bl = xwing.bottom_left,
+                    br = xwing.bottom_right
+                );
             }
         }
 
