@@ -157,6 +157,12 @@ impl IndexBitSet {
     }
 
     #[inline]
+    pub const fn contains_xy(&self, x: u8, y: u8) -> bool {
+        debug_assert!(x < 9 && y < 9);
+        self.contains_coord(Coordinate::new(x, y))
+    }
+
+    #[inline]
     pub const fn len(&self) -> usize {
         (self.state & Self::MASK).count_ones() as _
     }

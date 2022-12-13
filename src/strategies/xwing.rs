@@ -1,6 +1,6 @@
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
-use crate::index::{CollectIndexBitSet, Index, IndexBitSet};
+use crate::index::{CollectIndexBitSet, Index};
 use crate::strategies::{Strategy, StrategyResult};
 use crate::{Coordinate, Value};
 use log::{debug, trace};
@@ -73,20 +73,12 @@ impl Strategy for XWing {
                         let mut left_count = 0;
                         let mut right_count = 0;
                         for x in 0..9 {
-                            if indexes.contains_coord(Coordinate::new(x, tr.y)) {
-                                top_count += 1;
-                            }
-                            if indexes.contains_coord(Coordinate::new(x, br.y)) {
-                                bottom_count += 1;
-                            }
+                            top_count += indexes.contains_xy(x, tr.y) as u32;
+                            bottom_count += indexes.contains_xy(x, br.y) as u32;
                         }
                         for y in 0..9 {
-                            if indexes.contains_coord(Coordinate::new(tl.x, y)) {
-                                left_count += 1;
-                            }
-                            if indexes.contains_coord(Coordinate::new(br.x, y)) {
-                                right_count += 1;
-                            }
+                            left_count += indexes.contains_xy(tl.x, y) as u32;
+                            right_count += indexes.contains_xy(br.x, y) as u32;
                         }
 
                         if !(left_count == 2 && right_count == 2)
@@ -128,34 +120,17 @@ impl Strategy for XWing {
 
             let mut applied_xwing = false;
 
-            // Forget top row.
             for index in groups
                 .get_peer_indexes(xwing.top_left, CellGroupType::StandardRow)
-                .filter(|&idx| idx != xwing.top_left && idx != xwing.top_right)
-            {
-                applied_xwing |= state.forget_at_index(index, xwing.value);
-            }
-
-            // Forget in bottom row.
-            for index in groups
-                .get_peer_indexes(xwing.bottom_left, CellGroupType::StandardRow)
-                .filter(|&idx| idx != xwing.bottom_left && idx != xwing.bottom_right)
-            {
-                applied_xwing |= state.forget_at_index(index, xwing.value);
-            }
-
-            // Forget left column.
-            for index in groups
-                .get_peer_indexes(xwing.top_left, CellGroupType::StandardColumn)
-                .filter(|&idx| idx != xwing.top_left && idx != xwing.bottom_left)
-            {
-                applied_xwing |= state.forget_at_index(index, xwing.value);
-            }
-
-            // Forget right column.
-            for index in groups
-                .get_peer_indexes(xwing.top_right, CellGroupType::StandardColumn)
-                .filter(|&idx| idx != xwing.top_right && idx != xwing.bottom_right)
+                .chain(groups.get_peer_indexes(xwing.bottom_left, CellGroupType::StandardRow))
+                .chain(groups.get_peer_indexes(xwing.top_left, CellGroupType::StandardColumn))
+                .chain(groups.get_peer_indexes(xwing.top_right, CellGroupType::StandardColumn))
+                .filter(|&idx| {
+                    idx != xwing.top_left
+                        && idx != xwing.top_right
+                        && idx != xwing.bottom_left
+                        && idx != xwing.bottom_right
+                })
             {
                 applied_xwing |= state.forget_at_index(index, xwing.value);
             }
