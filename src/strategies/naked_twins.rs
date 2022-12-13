@@ -3,7 +3,7 @@ use crate::game_state::{GameState, InvalidGameState};
 use crate::index::{Index, IndexBitSet};
 use crate::strategies::{Strategy, StrategyResult};
 use crate::value::ValueBitSet;
-use log::debug;
+use log::{debug, trace};
 use std::fmt::{Debug, Formatter};
 
 /// Identifies and realizes naked twins.
@@ -89,8 +89,8 @@ impl Strategy for NakedTwins {
                 .insert(cell_under_test.index)
                 .insert(other_twin.index);
 
-            debug!(
-                "Twin pair detected in {group_type:?} at {a:?} and {b:?}: {values:?}",
+            trace!(
+                "Identified Naked Twin pair in {group_type:?} at {a:?} and {b:?}: {values:?}",
                 group_type = group_type,
                 a = cell_under_test.index.min(other_twin.index),
                 b = cell_under_test.index.max(other_twin.index),
@@ -112,12 +112,24 @@ impl Strategy for NakedTwins {
         for twin in twins_to_remove.into_iter() {
             // The choice of the smaller or larger index here doesn't matter as they
             // are in the same group.
+            let mut applied_twin = false;
             for index in groups
                 .get_peer_indexes(twin.smaller, group_type)
                 .filter(|&x| x != twin.smaller && x != twin.larger)
             {
-                applied_some |= state.forget_many_at_index(index, twin.values);
+                applied_twin |= state.forget_many_at_index(index, twin.values);
             }
+
+            if applied_twin {
+                debug!(
+                    "Applied Naked Twin at {a:?} and {b:?}: {values:?}",
+                    a = twin.smaller,
+                    b = twin.larger,
+                    values = twin.values
+                );
+            }
+
+            applied_some |= applied_twin;
         }
 
         if applied_some {

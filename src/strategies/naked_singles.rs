@@ -61,7 +61,7 @@ impl Strategy for NakedSingles {
                 debug_assert_ne!(index, index_under_test);
                 if state.forget_many_at_index(index, cell_under_test.to_bitset()) {
                     debug!(
-                        "Removed naked single {value:?} at {index:?} (single at {iut:?})",
+                        "Eliminated {value:?} at {index:?} due to Naked Single at {iut:?}",
                         value = cell_under_test.to_bitset(),
                         index = index,
                         iut = index_under_test

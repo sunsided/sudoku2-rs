@@ -28,6 +28,8 @@ To run the default example with debug output, execute:
 RUST_LOG=debug cargo run --release --example solver
 ```
 
+Set the log level to `trace` for more fine-grained information.
+
 ## Sudoku example
 
 For reference, here's an example puzzle from the Wikipedia [Sudoku](https://en.wikipedia.org/wiki/Sudoku) page:

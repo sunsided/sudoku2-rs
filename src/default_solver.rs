@@ -3,7 +3,7 @@ use crate::game_state::InvalidGameState;
 use crate::index::Index;
 use crate::strategies::{HiddenSingles, NakedSingles, NakedTwins, Strategy, StrategyResult, XWing};
 use crate::GameState;
-use log::debug;
+use log::{debug, trace};
 
 type PrintFn = fn(state: &GameState) -> ();
 
@@ -60,7 +60,7 @@ impl DefaultSolver {
         'stack: while let Some(state) = stack.pop() {
             last_seen_state = state.clone();
 
-            debug!("Taking state from stack ...");
+            trace!("Taking state from stack ...");
             self.print_state(&state);
 
             if state.is_solved(&self.groups) {
