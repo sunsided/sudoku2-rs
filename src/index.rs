@@ -77,15 +77,6 @@ impl IndexBitSet {
     }
 
     #[inline]
-    pub fn from_u8_slice<T: AsRef<[u8]>>(index: T) -> Self {
-        let mut state = Self::empty();
-        for index in index.as_ref().iter() {
-            state = state.with_index(Index::new(*index));
-        }
-        state
-    }
-
-    #[inline]
     pub const fn with_index(mut self, index: Index) -> Self {
         debug_assert!(index.0 < 81);
         let value = index.0 as u128;

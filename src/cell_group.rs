@@ -129,18 +129,10 @@ impl CellGroups {
     }
 
     pub fn with_hypersudoku_windows(self) -> Self {
-        self.with_group(CellGroup::from_u8_slice(&[
-            10, 11, 12, 19, 20, 21, 28, 29, 30,
-        ]))
-        .with_group(CellGroup::from_u8_slice(&[
-            14, 15, 16, 23, 24, 25, 32, 33, 34,
-        ]))
-        .with_group(CellGroup::from_u8_slice(&[
-            46, 47, 48, 55, 56, 57, 64, 65, 66,
-        ]))
-        .with_group(CellGroup::from_u8_slice(&[
-            50, 51, 52, 59, 60, 61, 68, 69, 70,
-        ]))
+        self.with_group(CellGroup::from_iter([10, 11, 12, 19, 20, 21, 28, 29, 30]))
+            .with_group(CellGroup::from_iter([14, 15, 16, 23, 24, 25, 32, 33, 34]))
+            .with_group(CellGroup::from_iter([46, 47, 48, 55, 56, 57, 64, 65, 66]))
+            .with_group(CellGroup::from_iter([50, 51, 52, 59, 60, 61, 68, 69, 70]))
     }
 
     #[inline]
@@ -284,16 +276,6 @@ impl CellGroup {
         self
     }
 
-    #[inline]
-    pub fn from_indexes<T: IntoIterator<Item = Index>>(indexes: T) -> Self {
-        Self::default().with_indexes(indexes)
-    }
-
-    #[inline]
-    pub fn from_u8_slice<T: AsRef<[u8]>>(indexes: T) -> Self {
-        Self::from_indexes(IndexBitSet::from_u8_slice(indexes))
-    }
-
     pub fn with_indexes<T: IntoIterator<Item = Index>>(mut self, indexes: T) -> Self {
         for index in indexes.into_iter() {
             self.indexes = self.indexes.with_index(index);
@@ -344,14 +326,37 @@ impl CellGroup {
     }
 }
 
+impl FromIterator<Index> for CellGroup {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = Index>>(iter: T) -> Self {
+        Self::default().with_indexes(iter)
+    }
+}
+
+impl FromIterator<u8> for CellGroup {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = u8>>(iter: T) -> Self {
+        Self::from_iter(IndexBitSet::from_iter(iter))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::index::Index;
 
     #[test]
-    fn from_iter() {
-        let cg = CellGroup::from_indexes([Index::new(0), Index::new(2), Index::new(3)]);
+    fn from_index_iter() {
+        let cg = CellGroup::from_iter([Index::new(0), Index::new(2), Index::new(3)]);
+        assert!(cg.contains(Index::new(0)));
+        assert!(cg.contains(Index::new(2)));
+        assert!(cg.contains(Index::new(3)));
+        assert!(!cg.contains(Index::new(1)));
+    }
+
+    #[test]
+    fn from_u8_iter() {
+        let cg = CellGroup::from_iter([0, 2, 3]);
         assert!(cg.contains(Index::new(0)));
         assert!(cg.contains(Index::new(2)));
         assert!(cg.contains(Index::new(3)));
