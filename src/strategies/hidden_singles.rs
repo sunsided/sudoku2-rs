@@ -42,7 +42,7 @@ impl Strategy for HiddenSingles {
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut applied_some = false;
 
-        for index_under_test in (0..81).map(Index::new) {
+        for index_under_test in Index::range() {
             // Hidden singles "hide" behind more than one other
             // possible value; we want to exclude impossible cells
             // and those that are already solved.

@@ -20,6 +20,11 @@ impl Value {
     pub const EIGHT: Value = unsafe { Value::new_unchecked(8) };
     pub const NINE: Value = unsafe { Value::new_unchecked(9) };
 
+    #[inline]
+    pub fn range() -> impl Iterator<Item = Value> {
+        (1..=9).map(|v| unsafe { Value::new_unchecked(v) })
+    }
+
     pub const fn new(value: NonZeroU8) -> Self {
         assert!(value.get() <= 9);
         Self(value)

@@ -1,7 +1,6 @@
 use crate::index::{Index, IndexBitSet, IndexBitSetIter};
 use crate::Coordinate;
 use std::fmt::{Debug, Formatter};
-use std::iter::{Filter, FlatMap};
 use std::slice::Iter;
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]

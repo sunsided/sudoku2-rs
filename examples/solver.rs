@@ -10,14 +10,17 @@ fn main() {
         .init();
 
     let matches = build_command().get_matches();
-    let game = if matches.get_flag("normal") {
-        sudoku2::example_games::sudoku::example_sudoku()
+    let game = if matches.get_flag("normal-ht") {
+        example_games::sudoku2::example_sudoku()
+    } else if matches.get_flag("normal-xwing") {
+        example_games::sudoku3::example_sudoku()
     } else if matches.get_flag("nonomino") {
-        sudoku2::example_games::nonomino::example_nonomino()
+        example_games::nonomino::example_nonomino()
     } else if matches.get_flag("hypersudoku") {
-        sudoku2::example_games::hypersudoku::example_hypersudoku()
+        example_games::hypersudoku::example_hypersudoku()
     } else {
-        sudoku2::example_games::sudoku::example_sudoku()
+        debug_assert!(matches.get_flag("normal"));
+        example_games::sudoku::example_sudoku()
     };
 
     println!("Cell groups:");
@@ -69,6 +72,22 @@ pub fn build_command() -> Command {
             Arg::new("normal")
                 .long("sudoku")
                 .help("Solve a regular Sudoku")
+                .action(clap::ArgAction::SetTrue)
+                .help_heading("Game type")
+                .group("type"),
+        )
+        .arg(
+            Arg::new("normal-ht")
+                .long("sudoku-ht")
+                .help("Solve a regular Sudoku with known Hidden Twins")
+                .action(clap::ArgAction::SetTrue)
+                .help_heading("Game type")
+                .group("type"),
+        )
+        .arg(
+            Arg::new("normal-xwing")
+                .long("sudoku-xwing")
+                .help("Solve a regular Sudoku with known X-Wings")
                 .action(clap::ArgAction::SetTrue)
                 .help_heading("Game type")
                 .group("type"),

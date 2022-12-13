@@ -1,6 +1,7 @@
 mod hidden_singles;
 mod naked_singles;
 mod naked_twins;
+mod xwing;
 
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
@@ -10,6 +11,7 @@ use std::ops::{BitOr, BitOrAssign};
 pub use hidden_singles::HiddenSingles;
 pub use naked_singles::NakedSingles;
 pub use naked_twins::NakedTwins;
+pub use xwing::XWing;
 
 pub trait Strategy: Debug {
     /// Indicates whether the next strategy should always be executed

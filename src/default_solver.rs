@@ -1,7 +1,7 @@
 use crate::cell_group::{CellGroups, CollectIndexes};
 use crate::game_state::InvalidGameState;
 use crate::index::Index;
-use crate::strategies::{HiddenSingles, NakedSingles, NakedTwins, Strategy, StrategyResult};
+use crate::strategies::{HiddenSingles, NakedSingles, NakedTwins, Strategy, StrategyResult, XWing};
 use crate::GameState;
 use log::debug;
 
@@ -38,6 +38,7 @@ impl DefaultSolver {
             NakedSingles::new_box(),
             HiddenSingles::new_box(),
             NakedTwins::new_box(),
+            XWing::new_box(),
         ];
 
         Self {
@@ -260,6 +261,18 @@ mod tests {
     #[test]
     fn solving_sudoku_with_naked_twins() {
         let game = crate::example_games::sudoku::example_sudoku_naked_twins();
+        let solver = DefaultSolver::new(&game);
+        let result = solver.solve(&game);
+        assert!(result.is_ok());
+
+        let solution = result.unwrap();
+        assert!(solution.is_consistent(&game.groups));
+        assert!(solution.is_solved(&game.groups));
+    }
+
+    #[test]
+    fn solving_sudoku_with_naked_xwings() {
+        let game = crate::example_games::sudoku3::example_sudoku();
         let solver = DefaultSolver::new(&game);
         let result = solver.solve(&game);
         assert!(result.is_ok());
