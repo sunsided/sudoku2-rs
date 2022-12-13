@@ -217,15 +217,11 @@ impl CellGroups {
         }
     }
 
-    pub fn get_peer_indexes<'a>(
-        &'a self,
+    pub fn get_peer_indexes(
+        &self,
         index: Index,
         group_type: CellGroupType,
-    ) -> FlatMap<
-        Filter<Iter<'_, CellGroup>, impl FnMut(&&'a CellGroup) -> bool>,
-        IndexBitSetIter,
-        fn(&CellGroup) -> IndexBitSetIter,
-    > {
+    ) -> impl Iterator<Item = Index> + '_ {
         self.groups
             .iter()
             .filter(move |&&g| g.contains(index) && g.group_type == group_type)
