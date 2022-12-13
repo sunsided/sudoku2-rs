@@ -215,7 +215,7 @@ impl CellGroups {
     ) -> impl Iterator<Item = Index> + '_ {
         self.groups
             .iter()
-            .filter(move |&&g| g.contains(index) && g.group_type == group_type)
+            .filter(move |&&g| g.group_type == group_type && g.contains(index))
             .flat_map(CellGroup::iter_indexes)
     }
 
