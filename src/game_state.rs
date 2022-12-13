@@ -2,7 +2,7 @@ use crate::cell_group::{CellGroups, CollectIndexes};
 use crate::game_cell::GameCell;
 use crate::index::{Index, IndexBitSet};
 use crate::value::{IntoValueOptions, Value, ValueBitSet};
-use crate::Coordinate;
+use crate::{Coordinate, IndexedGameCell};
 use std::cell::Cell;
 use std::mem::MaybeUninit;
 
@@ -101,7 +101,7 @@ impl GameState {
         value: Value,
         groups: &CellGroups,
     ) -> &Self {
-        self.place_and_propagate_at_index(coord.into(), value, groups);
+        self.place_and_propagate_at_index(coord.into_index(), value, groups);
         self
     }
 
@@ -148,7 +148,7 @@ impl GameState {
     /// For making a proper move, use [`place_and_propagate_at_coord`] instead.
     #[inline]
     pub fn set_at_coord(&self, coord: Coordinate, value: Value) -> &Self {
-        self.set_at_index(coord.into(), value);
+        self.set_at_index(coord.into_index(), value);
         self
     }
 
@@ -196,15 +196,14 @@ impl GameState {
 
     #[inline]
     fn cell_at_coord(&self, coord: Coordinate) -> &Cell<GameCell> {
-        self.cell_at_index(coord.into())
+        self.cell_at_index(coord.into_index())
     }
 
     /// Determines if this board state is a valid solution.
     pub fn is_solved(&self, groups: &CellGroups) -> bool {
         // Naive check: Any cell with not exactly one remaining value
         // implies the board is either unsolved or invalid.
-        for index in 0..81 {
-            let index = Index::new(index);
+        for index in Index::range() {
             let cell = self.get_at_index(index);
             if !cell.is_solved() {
                 return false;
@@ -213,8 +212,7 @@ impl GameState {
 
         // Since we now know that all cells have exactly one value,
         // we can sanity check them.
-        for index in 0..81 {
-            let index = Index::new(index);
+        for index in Index::range() {
             let cell = self.get_at_index(index);
             let value = cell.iter_candidates().next().unwrap();
 
@@ -236,8 +234,7 @@ impl GameState {
     /// Determines if this board state is consistent (i.e. doesn't
     /// violate the game rules) but does not check for a proper solution.
     pub fn is_consistent(&self, groups: &CellGroups) -> bool {
-        for index in 0..81 {
-            let index = Index::new(index);
+        for index in Index::range() {
             let cell = self.get_at_index(index);
             if cell.is_impossible() {
                 return false;
@@ -284,6 +281,27 @@ impl GameState {
         // It's just a heuristic. :)
         return true;
     }
+
+    pub fn iter_cells(&self) -> CellIterator {
+        CellIterator {
+            state: &self,
+            index: 0,
+        }
+    }
+
+    pub fn iter(&self) -> GameCellIterator {
+        GameCellIterator {
+            state: &self,
+            index: 0,
+        }
+    }
+
+    pub fn iter_indexed(&self) -> IndexedGameCellIterator {
+        IndexedGameCellIterator {
+            state: &self,
+            index: 0,
+        }
+    }
 }
 
 impl core::ops::Index<Index> for GameState {
@@ -304,17 +322,78 @@ impl core::ops::Index<Coordinate> for GameState {
     }
 }
 
+/// An iterator producing [`Cell`] references.
+pub struct CellIterator<'a> {
+    state: &'a GameState,
+    index: usize,
+}
+
+impl<'a> Iterator for CellIterator<'a> {
+    type Item = &'a Cell<GameCell>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.state.cells.len() {
+            return None;
+        }
+
+        let cell = &self.state.cells[self.index];
+        self.index += 1;
+        Some(cell)
+    }
+}
+
+/// An iterator producing [`GameCell`] copies.
+pub struct GameCellIterator<'a> {
+    state: &'a GameState,
+    index: usize,
+}
+
+impl<'a> Iterator for GameCellIterator<'a> {
+    type Item = GameCell;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.state.cells.len() {
+            return None;
+        }
+
+        let cell = &self.state.cells[self.index];
+        self.index += 1;
+        Some(cell.get())
+    }
+}
+
+/// An iterator producing [`GameCell`] copies.
+pub struct IndexedGameCellIterator<'a> {
+    state: &'a GameState,
+    index: usize,
+}
+
+impl<'a> Iterator for IndexedGameCellIterator<'a> {
+    type Item = IndexedGameCell;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.state.cells.len() {
+            return None;
+        }
+
+        let cell = self.state.cells[self.index]
+            .get()
+            .into_indexed(Index::new(self.index as _));
+        self.index += 1;
+        Some(cell)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::Value;
 
-    //noinspection DuplicatedCode
-    #[test]
     #[rustfmt::skip]
-    fn from_array() {
+    //noinspection DuplicatedCode
+    fn game_state() -> GameState {
         let x = 0u8;
-        let test_state = GameState::new_from([
+        GameState::new_from([
             x, 2, 8,   x, x, 7,   x, x, x,
             x, 1, 6,   x, 8, 3,   x, 7, x,
             x, x, x,   x, 2, x,   8, 5, 1,
@@ -326,7 +405,12 @@ mod tests {
             2, 9, x,   x, 7, x,   x, x, x,
             x, x, x,   8, 6, x,   1, 4, x,
             x, x, x,   3, x, x,   7, x, x,
-        ]);
+        ])
+    }
+
+    #[test]
+    fn from_array() {
+        let test_state = game_state();
 
         let expected_state = GameState::new();
         expected_state.set_at_xy(1, 0, Value::TWO);
@@ -371,5 +455,44 @@ mod tests {
         expected_state.set_at_xy(6, 8, Value::SEVEN);
 
         assert_eq!(expected_state, test_state);
+    }
+
+    #[test]
+    fn iter_cells() {
+        let state = game_state();
+        let mut iter = state.iter_cells();
+
+        for index in Index::range() {
+            let cell = state.get_at_index(index);
+            assert_eq!(iter.next().unwrap().get(), cell);
+        }
+
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn iter() {
+        let state = game_state();
+        let mut iter = state.iter();
+
+        for index in Index::range() {
+            let cell = state.get_at_index(index);
+            assert_eq!(iter.next().unwrap(), cell);
+        }
+
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn iter_indexed() {
+        let state = game_state();
+        let mut iter = state.iter_indexed();
+
+        for index in Index::range() {
+            let cell = state.get_at_index(index);
+            assert_eq!(iter.next().unwrap(), cell.into_indexed(index));
+        }
+
+        assert!(iter.next().is_none());
     }
 }

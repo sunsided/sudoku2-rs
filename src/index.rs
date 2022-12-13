@@ -17,6 +17,13 @@ impl Index {
     pub fn range() -> impl Iterator<Item = Index> {
         (0..81).map(Index::new)
     }
+
+    #[inline]
+    pub const fn into_coordinate(self) -> Coordinate {
+        let x = self.0 % Coordinate::GAME_WIDTH;
+        let y = self.0 / Coordinate::GAME_WIDTH;
+        Coordinate { x, y }
+    }
 }
 
 impl Deref for Index {
@@ -44,7 +51,7 @@ impl Into<u8> for &Index {
 
 impl Debug for Index {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let coordinate: Coordinate = self.clone().into();
+        let coordinate = self.into_coordinate();
         coordinate.fmt(f)
     }
 }
@@ -145,6 +152,11 @@ impl IndexBitSet {
     }
 
     #[inline]
+    pub const fn contains_coord(&self, coord: Coordinate) -> bool {
+        self.contains(coord.into_index())
+    }
+
+    #[inline]
     pub const fn len(&self) -> usize {
         (self.state & Self::MASK).count_ones() as _
     }
@@ -216,6 +228,19 @@ impl Iterator for IndexBitSetIter {
 
         self.index = 81;
         None
+    }
+}
+
+pub trait CollectIndexBitSet {
+    fn collect_bitset(self) -> IndexBitSet;
+}
+
+impl<T> CollectIndexBitSet for T
+where
+    T: IntoIterator<Item = Index>,
+{
+    fn collect_bitset(self) -> IndexBitSet {
+        IndexBitSet::from_iter(self)
     }
 }
 

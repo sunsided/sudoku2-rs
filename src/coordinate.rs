@@ -16,11 +16,16 @@ impl Coordinate {
         debug_assert!(x < Self::GAME_WIDTH && y < Self::GAME_HEIGHT);
         Self { x, y }
     }
+
+    #[inline]
+    pub const fn into_index(self) -> Index {
+        Index::new(self.y * Coordinate::GAME_WIDTH + self.x)
+    }
 }
 
 impl Debug for Coordinate {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let index: Index = self.clone().into();
+        let index = self.into_index();
         write!(
             f,
             "{x} × {y} (index {index})",
@@ -32,16 +37,16 @@ impl Debug for Coordinate {
 }
 
 impl Into<Index> for Coordinate {
+    #[inline]
     fn into(self) -> Index {
-        Index::new(self.y * Coordinate::GAME_WIDTH + self.x)
+        self.into_index()
     }
 }
 
 impl Into<Coordinate> for Index {
+    #[inline]
     fn into(self) -> Coordinate {
-        let x = (*self) % Coordinate::GAME_WIDTH;
-        let y = (*self) / Coordinate::GAME_WIDTH;
-        Coordinate { x, y }
+        self.into_coordinate()
     }
 }
 
@@ -52,7 +57,7 @@ mod tests {
     #[test]
     fn default_coordinate_to_index() {
         let coordinate = Coordinate::default();
-        let index: Index = coordinate.into();
+        let index = coordinate.into_index();
         assert_eq!(index, Index::default());
         assert_eq!(format!("{:?}", index), String::from("0 × 0 (index 0)"));
     }
@@ -60,7 +65,7 @@ mod tests {
     #[test]
     fn coordinate_to_index() {
         let coordinate = Coordinate::new(8, 8);
-        let index: Index = coordinate.into();
+        let index = coordinate.into_index();
         assert_eq!(index, Index::new(80));
         assert_eq!(format!("{:?}", index), String::from("8 × 8 (index 80)"));
     }

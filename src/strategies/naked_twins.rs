@@ -43,13 +43,12 @@ impl Strategy for NakedTwins {
         let mut twins_to_remove = Vec::default();
         let mut observed_twins = IndexBitSet::empty();
 
-        for index_under_test in Index::range() {
-            if !observed_twins.try_insert(index_under_test) {
+        for cell_under_test in state.iter_indexed() {
+            if !observed_twins.try_insert(cell_under_test.index) {
                 continue;
             }
 
             // Only consider cells that have two possible candidates.
-            let cell_under_test = state.get_at_index(index_under_test);
             if cell_under_test.len() != 2 {
                 continue;
             }
@@ -57,7 +56,7 @@ impl Strategy for NakedTwins {
             let mut possible_twins = Vec::default();
 
             // Find all possible twin candidates.
-            for index in groups.get_peer_indexes(index_under_test, group_type) {
+            for index in groups.get_peer_indexes(cell_under_test.index, group_type) {
                 if observed_twins.contains(index) {
                     continue;
                 }
@@ -87,19 +86,19 @@ impl Strategy for NakedTwins {
 
             // Eliminate twin values in other cells.
             observed_twins
-                .insert(index_under_test)
+                .insert(cell_under_test.index)
                 .insert(other_twin.index);
 
             debug!(
                 "Twin pair detected in {group_type:?} at {a:?} and {b:?}: {values:?}",
                 group_type = group_type,
-                a = index_under_test.min(other_twin.index),
-                b = index_under_test.max(other_twin.index),
+                a = cell_under_test.index.min(other_twin.index),
+                b = cell_under_test.index.max(other_twin.index),
                 values = other_twin.to_bitset()
             );
             twins_to_remove.push(TwinPair {
-                smaller: index_under_test.min(other_twin.index),
-                larger: index_under_test.max(other_twin.index),
+                smaller: cell_under_test.index.min(other_twin.index),
+                larger: cell_under_test.index.max(other_twin.index),
                 values: other_twin.to_bitset(),
             });
         }

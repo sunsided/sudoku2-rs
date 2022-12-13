@@ -61,7 +61,7 @@ impl CellGroups {
             let mut group = CellGroup::new(ids, CellGroupType::StandardRow);
             ids += 1;
             for x in 0..9 {
-                let coord = Coordinate::new(x, y).into();
+                let coord = Coordinate::new(x, y).into_index();
                 group.add_index(coord);
                 check.remove(coord);
             }
@@ -88,7 +88,7 @@ impl CellGroups {
             ids += 1;
             let mut group = CellGroup::new(ids, CellGroupType::StandardColumn);
             for y in 0..9 {
-                let coord = Coordinate::new(x, y).into();
+                let coord = Coordinate::new(x, y).into_index();
                 group.add_index(coord);
                 check.remove(coord);
             }
@@ -114,7 +114,7 @@ impl CellGroups {
 
                 for row in 0..3 {
                     for col in 0..3 {
-                        let coord = Coordinate::new(x + col, y + row).into();
+                        let coord = Coordinate::new(x + col, y + row).into_index();
                         group.add_index(coord);
                         check.remove(coord);
                     }
@@ -152,7 +152,7 @@ impl CellGroups {
         coord: Coordinate,
         mode: CollectIndexes,
     ) -> Result<IndexBitSet, NoMatchingGroup> {
-        self.get_peers_at_index(coord.into(), mode)
+        self.get_peers_at_index(coord.into_index(), mode)
     }
 
     pub fn get_peers_at_index(
@@ -190,7 +190,7 @@ impl CellGroups {
         &self,
         coord: Coordinate,
     ) -> Result<Vec<CellGroup>, NoMatchingGroup> {
-        self.get_groups_at_index(coord.into())
+        self.get_groups_at_index(coord.into_index())
     }
 
     pub fn get_groups_at_index(&self, index: Index) -> Result<Vec<CellGroup>, NoMatchingGroup> {

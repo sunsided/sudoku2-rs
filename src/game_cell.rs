@@ -56,12 +56,12 @@ impl IndexedGameCell {
 
     #[inline]
     pub fn as_coordinate(&self) -> Coordinate {
-        self.index.into()
+        self.index.into_coordinate()
     }
 
     #[inline]
     pub fn to_coordinate(self) -> Coordinate {
-        self.index.into()
+        self.index.into_coordinate()
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
-use crate::index::{Index, IndexBitSet};
+use crate::index::{CollectIndexBitSet, Index, IndexBitSet};
 use crate::strategies::{Strategy, StrategyResult};
 use crate::{Coordinate, Value};
 use log::{debug, trace};
@@ -36,10 +36,11 @@ impl Strategy for XWing {
 
         for value in Value::range() {
             // Identify all the cells that are not solved and contain the value under test.
-            let indexes = IndexBitSet::from_iter(Index::range().filter(|&index| {
-                let cell = state.get_at_index(index);
-                !cell.is_solved() && cell.contains(value)
-            }));
+            let indexes = state
+                .iter_indexed()
+                .filter(|&cell| !cell.is_solved() && cell.contains(value))
+                .map(|cell| cell.index)
+                .collect_bitset();
 
             // For the X-Wing to work, we need at least four matching cells
             // in order to form a single rectangle.
@@ -49,7 +50,7 @@ impl Strategy for XWing {
 
             // For each matching cell, scan for rectangles.
             for tl in indexes {
-                let tl: Coordinate = tl.into();
+                let tl = tl.into_coordinate();
 
                 for x in (tl.x + 1)..9 {
                     for y in (tl.y + 1)..9 {
@@ -72,18 +73,18 @@ impl Strategy for XWing {
                         let mut left_count = 0;
                         let mut right_count = 0;
                         for x in 0..9 {
-                            if indexes.contains(Coordinate::new(x, tr.y).into()) {
+                            if indexes.contains_coord(Coordinate::new(x, tr.y)) {
                                 top_count += 1;
                             }
-                            if indexes.contains(Coordinate::new(x, br.y).into()) {
+                            if indexes.contains_coord(Coordinate::new(x, br.y)) {
                                 bottom_count += 1;
                             }
                         }
                         for y in 0..9 {
-                            if indexes.contains(Coordinate::new(tl.x, y).into()) {
+                            if indexes.contains_coord(Coordinate::new(tl.x, y)) {
                                 left_count += 1;
                             }
-                            if indexes.contains(Coordinate::new(br.x, y).into()) {
+                            if indexes.contains_coord(Coordinate::new(br.x, y)) {
                                 right_count += 1;
                             }
                         }
