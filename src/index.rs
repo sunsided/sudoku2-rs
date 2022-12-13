@@ -172,24 +172,24 @@ impl IndexBitSet {
     }
 }
 
-impl From<&[u8]> for IndexBitSet {
-    #[inline]
-    fn from(values: &[u8]) -> Self {
-        let mut state = 0u128;
-        for value in values {
-            state |= 1u128 << value;
+impl FromIterator<u8> for IndexBitSet {
+    fn from_iter<T: IntoIterator<Item = u8>>(iter: T) -> Self {
+        Self {
+            state: iter.into_iter().fold(0u128, |state, value| {
+                debug_assert!(value < 81, "Index is out of range");
+                state | 1u128 << value
+            }),
         }
-        Self { state }
     }
 }
 
 impl FromIterator<Index> for IndexBitSet {
     fn from_iter<T: IntoIterator<Item = Index>>(iter: T) -> Self {
-        let mut state = 0u128;
-        for value in iter {
-            state |= 1u128 << value.0;
+        Self {
+            state: iter
+                .into_iter()
+                .fold(0u128, |state, value| state | 1u128 << value.0),
         }
-        Self { state }
     }
 }
 
