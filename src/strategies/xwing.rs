@@ -45,7 +45,7 @@ impl Strategy for XWing {
             // For the X-Wing to work, we need at least four matching cells
             // in order to form a single rectangle.
             if indexes.len() < 4 {
-                return Ok(StrategyResult::NoChange);
+                continue;
             }
 
             // For each matching cell, scan for rectangles.
@@ -53,17 +53,21 @@ impl Strategy for XWing {
                 let tl = tl.into_coordinate();
 
                 for x in (tl.x + 1)..9 {
+                    let tr = Coordinate::new(x, tl.y);
+                    let has_tr = indexes.contains_coord(tr);
+                    if !has_tr {
+                        continue;
+                    }
+
                     for y in (tl.y + 1)..9 {
-                        let tr = Coordinate::new(x, tl.y);
                         let bl = Coordinate::new(tl.x, y);
                         let br = Coordinate::new(x, y);
 
-                        let has_tl = indexes.contains(tr.into());
-                        let has_bl = indexes.contains(bl.into());
-                        let has_br = indexes.contains(br.into());
+                        let has_bl = indexes.contains_coord(bl);
+                        let has_br = indexes.contains_coord(br);
 
                         // Ensure we found a rectangle.
-                        if !(has_tl && has_bl && has_br) {
+                        if !(has_bl && has_br) {
                             continue;
                         }
 
@@ -72,13 +76,11 @@ impl Strategy for XWing {
                         let mut bottom_count = 0;
                         let mut left_count = 0;
                         let mut right_count = 0;
-                        for x in 0..9 {
-                            top_count += indexes.contains_xy(x, tr.y) as u32;
-                            bottom_count += indexes.contains_xy(x, br.y) as u32;
-                        }
-                        for y in 0..9 {
-                            left_count += indexes.contains_xy(tl.x, y) as u32;
-                            right_count += indexes.contains_xy(br.x, y) as u32;
+                        for xy in 0..9 {
+                            top_count += indexes.contains_xy(xy, tr.y) as u32;
+                            bottom_count += indexes.contains_xy(xy, br.y) as u32;
+                            left_count += indexes.contains_xy(tl.x, xy) as u32;
+                            right_count += indexes.contains_xy(br.x, xy) as u32;
                         }
 
                         if !(left_count == 2 && right_count == 2)
@@ -97,10 +99,10 @@ impl Strategy for XWing {
                         );
                         xwings.push(XWingCoords {
                             value,
-                            top_left: tl.into(),
-                            top_right: tr.into(),
-                            bottom_left: bl.into(),
-                            bottom_right: br.into(),
+                            top_left: tl.into_index(),
+                            top_right: tr.into_index(),
+                            bottom_left: bl.into_index(),
+                            bottom_right: br.into_index(),
                         })
                     }
                 }
@@ -119,24 +121,17 @@ impl Strategy for XWing {
             debug_assert!(xwing.top_right != xwing.bottom_left);
 
             let mut applied_xwing = false;
-
             for index in groups
                 .get_peer_indexes(xwing.top_left, CellGroupType::StandardRow)
                 .chain(groups.get_peer_indexes(xwing.bottom_left, CellGroupType::StandardRow))
                 .chain(groups.get_peer_indexes(xwing.top_left, CellGroupType::StandardColumn))
                 .chain(groups.get_peer_indexes(xwing.top_right, CellGroupType::StandardColumn))
-                .filter(|&idx| {
-                    idx != xwing.top_left
-                        && idx != xwing.top_right
-                        && idx != xwing.bottom_left
-                        && idx != xwing.bottom_right
-                })
+                .filter(|idx| !xwing.eq(idx))
             {
                 applied_xwing |= state.forget_at_index(index, xwing.value);
             }
 
             applied_some |= applied_xwing;
-
             if applied_xwing {
                 debug!(
                     "Applied X-Wing for value {value:?} at {tl:?}, {tr:?}, {bl:?}, {br:?}",
@@ -152,6 +147,7 @@ impl Strategy for XWing {
         if applied_some {
             Ok(StrategyResult::AppliedChange)
         } else {
+            trace!("No X-Wings could be applied");
             Ok(StrategyResult::NoChange)
         }
     }
@@ -172,4 +168,14 @@ struct XWingCoords {
     top_right: Index,
     bottom_left: Index,
     bottom_right: Index,
+}
+
+impl PartialEq<Index> for XWingCoords {
+    #[inline]
+    fn eq(&self, other: &Index) -> bool {
+        self.top_left == *other
+            || self.top_right == *other
+            || self.bottom_left == *other
+            || self.bottom_right == *other
+    }
 }

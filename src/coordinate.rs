@@ -28,7 +28,7 @@ impl Debug for Coordinate {
         let index = self.into_index();
         write!(
             f,
-            "{x} × {y} (index {index})",
+            "{x}×{y} (index {index})",
             x = self.x,
             y = self.y,
             index = *index
@@ -59,7 +59,7 @@ mod tests {
         let coordinate = Coordinate::default();
         let index = coordinate.into_index();
         assert_eq!(index, Index::default());
-        assert_eq!(format!("{:?}", index), String::from("0 × 0 (index 0)"));
+        assert_eq!(format!("{:?}", index), String::from("0×0 (index 0)"));
     }
 
     #[test]
@@ -67,6 +67,6 @@ mod tests {
         let coordinate = Coordinate::new(8, 8);
         let index = coordinate.into_index();
         assert_eq!(index, Index::new(80));
-        assert_eq!(format!("{:?}", index), String::from("8 × 8 (index 80)"));
+        assert_eq!(format!("{:?}", index), String::from("8×8 (index 80)"));
     }
 }

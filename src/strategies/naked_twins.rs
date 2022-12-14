@@ -135,6 +135,10 @@ impl Strategy for NakedTwins {
         if applied_some {
             Ok(StrategyResult::AppliedChange)
         } else {
+            trace!(
+                "No Naked Twins could be applied in {group_type:?}",
+                group_type = group_type
+            );
             Ok(StrategyResult::NoChange)
         }
     }
