@@ -1,6 +1,7 @@
 use crate::cell_group::{CellGroups, CollectIndexes};
 use crate::game_state::InvalidGameState;
 use crate::index::Index;
+use crate::state_stack::{StateStack, StateStackEntry};
 use crate::strategies::{HiddenSingles, NakedSingles, NakedTwins, Strategy, StrategyResult, XWing};
 use crate::GameState;
 use log::{debug, trace};
@@ -56,14 +57,25 @@ impl DefaultSolver {
         // We keep the last seen state as a reference to return when the board is unsolvable.
         let mut last_seen_state = state.as_ref().clone();
 
-        let mut stack = vec![last_seen_state.clone()];
-        'stack: while let Some(state) = stack.pop() {
+        let mut stack = StateStack::new_with(last_seen_state.clone());
+        'stack: while let Some(StateStackEntry {
+            branch_id: fork_id,
+            state,
+        }) = stack.pop()
+        {
             last_seen_state = state.clone();
 
-            trace!("Taking state from stack ...");
+            debug!(
+                "Processing state {id} (queue depth: {depth}/{max_depth}, num forks: {num_forks}) ...",
+                id = fork_id,
+                depth = stack.len(),
+                max_depth = stack.max_depth(),
+                num_forks = stack.num_forks()
+            );
             self.print_state(&state);
 
             if state.is_solved(&self.groups) {
+                debug!("Branch {id} is solved", id = fork_id);
                 return Ok(state);
             }
 
@@ -82,6 +94,7 @@ impl DefaultSolver {
             debug_assert!(state.is_consistent(&self.groups));
 
             if state.is_solved(&self.groups) {
+                debug!("Applying strategies solved branch {id}", id = fork_id);
                 return Ok(state);
             }
 
@@ -112,11 +125,14 @@ impl DefaultSolver {
 
             // In the current version of the board, simply forget the picked option.
             state.forget_at_index(fork_index, fork_value);
+
+            trace!("Enqueueing modified base branch before fork");
             stack.push(state.clone());
 
             // Emplace the forked version after that so that we try with fewer
             // candidates next. If it is inconsistent, skip it.
             if forked.is_consistent(&self.groups) {
+                trace!("Enqueueing forked branch");
                 stack.push(forked);
             } else {
                 debug!("Forked state is inconsistent - ignoring.");
@@ -137,10 +153,9 @@ impl DefaultSolver {
                         {
                             if !state.is_consistent(&self.groups) {
                                 debug!(
-                                    "{strategy:?} resulted in inconsistent state - ignoring branch",
+                                    "{strategy:?} resulted in inconsistent state",
                                     strategy = strategy
                                 );
-                                self.print_state(&state);
                                 return Err(InvalidGameState {});
                             }
                         }
