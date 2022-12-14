@@ -13,7 +13,7 @@ pub mod visualization;
 
 pub use crate::cell_group::{CellGroup, CellGroups};
 pub use crate::coordinate::Coordinate;
-pub use crate::default_solver::{DefaultSolver, Unsolvable};
+pub use crate::default_solver::{DefaultSolver, DefaultSolverConfig, Unsolvable};
 pub use crate::game::Game;
 pub use crate::game_cell::{GameCell, IndexedGameCell};
 pub use crate::game_state::GameState;

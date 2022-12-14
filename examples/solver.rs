@@ -25,6 +25,20 @@ fn main() {
         example_games::sudoku::example_sudoku()
     };
 
+    let options = DefaultSolverConfig {
+        hidden_singles: matches.get_flag("use-hidden-singles"),
+        naked_twins: matches.get_flag("use-naked-twins"),
+        hidden_twins: matches.get_flag("use-hidden-twins"),
+        xwings: matches.get_flag("use-xwings"),
+    };
+
+    println!("Strategies:");
+    println!("  Naked Singles:  enabled (required)");
+    println!("  Hidden Singles: {}", state_str(options.hidden_singles));
+    println!("  Naked Twins:    {}", state_str(options.naked_twins));
+    println!("  Hidden Twins:   {}", state_str(options.hidden_twins));
+    println!("  X-Wings:        {}", state_str(options.xwings));
+
     println!("Cell groups:");
     game.print_cell_groups();
 
@@ -33,7 +47,7 @@ fn main() {
 
     assert!(game.initial_state.is_consistent(&game.groups));
 
-    let mut solver = DefaultSolver::new(&game.groups);
+    let mut solver = DefaultSolver::new_with(&game.groups, &options);
     solver.set_print_fn(|state| print_game_state(state));
 
     let now = Instant::now();
@@ -64,6 +78,14 @@ fn main() {
         "Search terminated after {} s.",
         duration.subsec_micros() as f64 * 1e-6
     );
+}
+
+fn state_str(enabled: bool) -> &'static str {
+    if enabled {
+        "enabled"
+    } else {
+        "disabled"
+    }
 }
 
 pub fn build_command() -> Command {
@@ -118,6 +140,35 @@ pub fn build_command() -> Command {
                 .help_heading("Game type")
                 .group("type"),
         )
-        .group(ArgGroup::new("type"));
+        .group(ArgGroup::new("type"))
+        .arg(
+            Arg::new("use-hidden-singles")
+                .long("no-hidden-singles")
+                .help("Disables the Hidden Singles strategy")
+                .action(clap::ArgAction::SetFalse)
+                .help_heading("Strategy"),
+        )
+        .arg(
+            Arg::new("use-naked-twins")
+                .long("no-naked-twins")
+                .help("Disables the Naked Twins strategy")
+                .action(clap::ArgAction::SetFalse)
+                .help_heading("Strategy"),
+        )
+        .arg(
+            Arg::new("use-hidden-twins")
+                .long("no-hidden-twins")
+                .help("Disables the Hidden Twins strategy")
+                .action(clap::ArgAction::SetFalse)
+                .help_heading("Strategy"),
+        )
+        .arg(
+            Arg::new("use-xwings")
+                .long("no-xwings")
+                .help("Disables the X-Wings strategy")
+                .action(clap::ArgAction::SetFalse)
+                .help_heading("Strategy"),
+        );
+
     command
 }

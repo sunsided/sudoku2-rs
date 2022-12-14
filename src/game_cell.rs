@@ -73,6 +73,13 @@ impl GameCell {
         }
     }
 
+    #[inline]
+    pub const fn from_values(values: ValueBitSet) -> Self {
+        Self {
+            possible_values: values,
+        }
+    }
+
     /// Determines whether this cell contains a specific value (possibly as a candidate).
     #[inline]
     pub const fn contains(&self, value: Value) -> bool {

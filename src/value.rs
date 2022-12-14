@@ -172,6 +172,12 @@ impl ValueBitSet {
     }
 
     #[inline]
+    pub const fn with_intersection(mut self, other: ValueBitSet) -> Self {
+        self.state &= other.state & Self::MASK;
+        self
+    }
+
+    #[inline]
     pub fn union(&mut self, other: ValueBitSet) -> &mut Self {
         self.state |= other.state & Self::MASK;
         self
@@ -546,5 +552,30 @@ mod tests {
         bitset.remove_many(remove);
 
         assert_eq!(bitset.as_single_value(), Some(c));
+    }
+
+    #[test]
+    fn with_intersection() {
+        let a = Value::try_from(9).unwrap();
+        let b = Value::try_from(5).unwrap();
+        let c = Value::try_from(2).unwrap();
+        let d = Value::try_from(7).unwrap();
+
+        let lhs = ValueBitSet::default()
+            .with_value(a)
+            .with_value(b)
+            .with_value(c);
+
+        let rhs = ValueBitSet::default()
+            .with_value(b)
+            .with_value(c)
+            .with_value(d);
+
+        let intersection = lhs.with_intersection(rhs);
+
+        assert!(!intersection.contains(a));
+        assert!(intersection.contains(b));
+        assert!(intersection.contains(c));
+        assert!(!intersection.contains(d));
     }
 }

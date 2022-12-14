@@ -14,12 +14,13 @@ use std::fmt::{Debug, Formatter};
 /// Given two cells with the values `3 4` and `3 4 7`,
 /// `7` is the hidden single. Since it only appears in the second
 /// cell, it must be placed there (resulting in a "naked twin" pair of `3 4`).
-#[derive(Default)]
-pub struct HiddenSingles {}
+pub struct HiddenSingles {
+    enabled: bool,
+}
 
 impl HiddenSingles {
-    pub fn new_box() -> Box<Self> {
-        Box::new(Self::default())
+    pub fn new_box(enabled: bool) -> Box<Self> {
+        Box::new(Self { enabled })
     }
 }
 
@@ -30,6 +31,10 @@ impl Debug for HiddenSingles {
 }
 
 impl Strategy for HiddenSingles {
+    fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
     fn always_continue(&self) -> bool {
         false
     }

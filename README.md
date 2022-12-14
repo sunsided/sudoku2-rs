@@ -6,7 +6,9 @@ Unlike the previous experiment, this solver correctly solves Hypersudokus and re
 Internally, value candidates and indexes are encoded via 16- and 128-bit bitsets ([ValueBitSet], [IndexBitSet]),
 reducing the overhead for constructing and testing hashsets.
 
-Currently implemented strategies are [Naked Singles], [Hidden Singles], [Naked Twins] and [X-Wings].
+Currently implemented strategies are [Naked Singles], [Hidden Singles], [Naked Twins], [Hidden Twins] and [X-Wings].
+Each additional strategy comes with its own overhead and most of the time, simply running a trial-and-error
+branching strategy performs best in terms of wall clock time.
 
 [ValueBitSet]: src/value.rs
 [IndexBitSet]: src/index.rs
@@ -14,6 +16,7 @@ Currently implemented strategies are [Naked Singles], [Hidden Singles], [Naked T
 [Naked Singles]: src/strategies/naked_singles.rs
 [Hidden Singles]: src/strategies/hidden_singles.rs
 [Naked Twins]: src/strategies/naked_twins.rs
+[Hidden Twins]: src/strategies/hidden_twins.rs
 [X-Wings]: src/strategies/xwing.rs
 
 To show the available options for the example, execute:
@@ -26,6 +29,12 @@ To run the default example with debug output, execute:
 
 ```bash
 RUST_LOG=debug cargo run --release --example solver
+```
+
+Individual strategies can be disabled. To run the default example without the Hidden Twins strategy, execute:
+
+```bash
+cargo run --release --example solver --no-hidden-twins
 ```
 
 Set the log level to `trace` for more fine-grained information.

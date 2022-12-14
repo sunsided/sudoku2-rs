@@ -144,6 +144,33 @@ impl GameState {
         true
     }
 
+    /// Places all specified value at the specified cell,
+    /// but does not propagate the changes through the board.
+    /// For making a proper move, use [`place_and_propagate_at_index`] instead.
+    #[inline]
+    pub fn set_many_at_index(&self, index: Index, values: ValueBitSet) -> bool {
+        let cell = self.cell_at_index(index);
+        let game_cell = cell.get();
+
+        #[cfg(debug_assertions)]
+        {
+            debug_assert!(
+                !game_cell.is_solved() || !game_cell.contains_all(values),
+                "Attempted to overwrite solved cell at {index:?} with differing value: had {old:?}, instructed to write {new:?}",
+                index = index,
+                old = game_cell.iter_candidates().next().unwrap(),
+                new = values
+            );
+        }
+
+        if game_cell.to_bitset().eq(&values) {
+            return false;
+        }
+
+        cell.set(GameCell::from_values(values));
+        true
+    }
+
     /// Places a value at the specified cell, but does not propagate the changes through the board.
     /// For making a proper move, use [`place_and_propagate_at_coord`] instead.
     #[inline]

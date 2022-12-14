@@ -14,12 +14,13 @@ use std::fmt::{Debug, Formatter};
 /// Given three cells with the values `3 5`, `3 4` and `3 4`,
 /// `3 4` are the naked twins. Since they must appear in the last two
 /// cells, the `3` can be removed from the first cell.
-#[derive(Default)]
-pub struct NakedTwins {}
+pub struct NakedTwins {
+    enabled: bool,
+}
 
 impl NakedTwins {
-    pub fn new_box() -> Box<Self> {
-        Box::new(Self::default())
+    pub fn new_box(enabled: bool) -> Box<Self> {
+        Box::new(Self { enabled })
     }
 }
 
@@ -30,6 +31,10 @@ impl Debug for NakedTwins {
 }
 
 impl Strategy for NakedTwins {
+    fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
     fn always_continue(&self) -> bool {
         false
     }

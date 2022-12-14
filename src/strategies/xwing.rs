@@ -7,12 +7,13 @@ use log::{debug, trace};
 use std::fmt::{Debug, Formatter};
 
 /// Identifies and realizes the X-Wing strategy.
-#[derive(Default)]
-pub struct XWing {}
+pub struct XWing {
+    enabled: bool,
+}
 
 impl XWing {
-    pub fn new_box() -> Box<Self> {
-        Box::new(Self::default())
+    pub fn new_box(enabled: bool) -> Box<Self> {
+        Box::new(Self { enabled })
     }
 }
 
@@ -23,6 +24,10 @@ impl Debug for XWing {
 }
 
 impl Strategy for XWing {
+    fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
     fn always_continue(&self) -> bool {
         false
     }

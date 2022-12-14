@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use sudoku2::{example_games, DefaultSolver};
+use sudoku2::{example_games, DefaultSolver, DefaultSolverConfig};
 
 fn criterion_benchmark(c: &mut Criterion) {
     {
@@ -20,8 +20,25 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     {
         let sudoku_game = example_games::sudoku2::example_sudoku_hardest();
-        let sudoku_solver = DefaultSolver::new(&sudoku_game.groups);
-        c.bench_function("sudoku-hardest", |b| {
+        let sudoku_solver = DefaultSolver::new_with(
+            &sudoku_game.groups,
+            DefaultSolverConfig {
+                hidden_twins: false,
+                ..Default::default()
+            },
+        );
+        c.bench_function("sudoku-hardest without Hidden Twins", |b| {
+            b.iter(|| sudoku_solver.solve(black_box(&sudoku_game.initial_state)))
+        });
+
+        let sudoku_solver = DefaultSolver::new_with(
+            &sudoku_game.groups,
+            DefaultSolverConfig {
+                hidden_twins: true,
+                ..Default::default()
+            },
+        );
+        c.bench_function("sudoku-hardest with Hidden Twins", |b| {
             b.iter(|| sudoku_solver.solve(black_box(&sudoku_game.initial_state)))
         });
     }

@@ -1,4 +1,5 @@
 mod hidden_singles;
+mod hidden_twins;
 mod naked_singles;
 mod naked_twins;
 mod xwing;
@@ -9,11 +10,17 @@ use std::fmt::Debug;
 use std::ops::{BitOr, BitOrAssign};
 
 pub use hidden_singles::HiddenSingles;
+pub use hidden_twins::HiddenTwins;
 pub use naked_singles::NakedSingles;
 pub use naked_twins::NakedTwins;
 pub use xwing::XWing;
 
 pub trait Strategy: Debug {
+    /// Indicates whether this strategy is enabled.
+    fn is_enabled(&self) -> bool {
+        true
+    }
+
     /// Indicates whether the next strategy should always be executed
     /// (if `true`) regardless of the return value of [`Strategy::apply`]
     /// or (if `false`) whether execution should restart with the first registered

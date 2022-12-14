@@ -2,7 +2,9 @@ use crate::cell_group::{CellGroups, CollectIndexes};
 use crate::game_state::InvalidGameState;
 use crate::index::Index;
 use crate::state_stack::{StateStack, StateStackEntry};
-use crate::strategies::{HiddenSingles, NakedSingles, NakedTwins, Strategy, StrategyResult, XWing};
+use crate::strategies::{
+    HiddenSingles, HiddenTwins, NakedSingles, NakedTwins, Strategy, StrategyResult, XWing,
+};
 use crate::GameState;
 use log::{debug, trace};
 
@@ -33,13 +35,36 @@ impl Default for SmallestIndex {
     }
 }
 
+pub struct DefaultSolverConfig {
+    pub hidden_singles: bool,
+    pub naked_twins: bool,
+    pub hidden_twins: bool,
+    pub xwings: bool,
+}
+
+impl Default for DefaultSolverConfig {
+    fn default() -> Self {
+        Self {
+            hidden_singles: true,
+            naked_twins: true,
+            hidden_twins: true,
+            xwings: true,
+        }
+    }
+}
+
 impl DefaultSolver {
     pub fn new<G: AsRef<CellGroups>>(groups: G) -> Self {
+        Self::new_with(groups, &DefaultSolverConfig::default())
+    }
+
+    pub fn new_with<G: AsRef<CellGroups>>(groups: G, config: &DefaultSolverConfig) -> Self {
         let strategies: Vec<Box<dyn Strategy>> = vec![
             NakedSingles::new_box(),
-            HiddenSingles::new_box(),
-            NakedTwins::new_box(),
-            XWing::new_box(),
+            HiddenSingles::new_box(config.hidden_singles),
+            NakedTwins::new_box(config.naked_twins),
+            HiddenTwins::new_box(config.hidden_twins),
+            XWing::new_box(config.xwings),
         ];
 
         Self {
@@ -145,7 +170,7 @@ impl DefaultSolver {
     /// Applies different strategies for solving the board without branching.
     fn apply_strategies(&self, state: &GameState) -> Result<(), InvalidGameState> {
         'solving: loop {
-            'next_strategy: for strategy in self.strategies.iter() {
+            'next_strategy: for strategy in self.strategies.iter().filter(|&s| s.is_enabled()) {
                 match strategy.apply(&state, &self.groups) {
                     Err(e) => return Err(e),
                     Ok(outcome) => {
