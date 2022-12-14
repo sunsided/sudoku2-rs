@@ -53,21 +53,23 @@ impl Strategy for NakedSingles {
             }
 
             // Find all peers candidates.
+            let mut applied_single = false;
             for index in groups
                 .get_peers_at_index(index_under_test, CollectIndexes::ExcludeSelf)
                 .unwrap()
                 .into_iter()
             {
                 debug_assert_ne!(index, index_under_test);
-                if state.forget_many_at_index(index, cell_under_test.to_bitset()) {
-                    debug!(
-                        "Eliminated {value:?} at {index:?} due to Naked Single at {iut:?}",
-                        value = cell_under_test.to_bitset(),
-                        index = index,
-                        iut = index_under_test
-                    );
-                    removed_some = true;
-                }
+                applied_single |= state.forget_many_at_index(index, cell_under_test.to_bitset());
+            }
+
+            removed_some |= applied_single;
+            if applied_single {
+                debug!(
+                    "Applied Naked Single {value:?} at {iut:?}",
+                    value = cell_under_test.to_bitset(),
+                    iut = index_under_test
+                );
             }
         }
 
