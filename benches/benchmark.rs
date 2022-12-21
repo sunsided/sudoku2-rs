@@ -22,7 +22,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         let sudoku_game = example_games::sudoku2::example_sudoku_hardest();
         let sudoku_solver = DefaultSolver::new_with(
             &sudoku_game.groups,
-            DefaultSolverConfig {
+            &DefaultSolverConfig {
                 hidden_twins: false,
                 ..Default::default()
             },
@@ -33,7 +33,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
         let sudoku_solver = DefaultSolver::new_with(
             &sudoku_game.groups,
-            DefaultSolverConfig {
+            &DefaultSolverConfig {
                 hidden_twins: true,
                 ..Default::default()
             },
