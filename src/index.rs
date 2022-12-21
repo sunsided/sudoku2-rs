@@ -60,7 +60,7 @@ impl Debug for Index {
 ///
 /// ## Technical Notes
 /// Practically this implementation allows for storing up to 127 different indexes.
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct IndexBitSet {
     /// We anticipate at most 81 fields on a standard Sudoku game.
     /// We use a 128-bit type here to directly encode the field values,
@@ -167,15 +167,15 @@ impl IndexBitSet {
         (self.state & Self::MASK).count_ones() as _
     }
 
-    #[inline]
+    #[inline(always)]
     pub const fn is_empty(&self) -> bool {
         self.state & Self::MASK == 0
     }
 
     #[inline]
-    pub const fn iter(&self) -> IndexBitSetIter {
-        IndexBitSetIter {
-            value: *self,
+    pub const fn iter(&self) -> IntoIndexBitSetIter {
+        IntoIndexBitSetIter {
+            state: self.state,
             index: 0,
         }
     }
@@ -204,24 +204,27 @@ impl FromIterator<Index> for IndexBitSet {
 
 impl IntoIterator for IndexBitSet {
     type Item = Index;
-    type IntoIter = IndexBitSetIter;
+    type IntoIter = IntoIndexBitSetIter;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        self.iter()
+        IntoIndexBitSetIter {
+            state: self.state,
+            index: 0,
+        }
     }
 }
 
-pub struct IndexBitSetIter {
-    value: IndexBitSet,
+pub struct IntoIndexBitSetIter {
+    state: u128,
     index: u8,
 }
 
-impl Iterator for IndexBitSetIter {
+impl Iterator for IntoIndexBitSetIter {
     type Item = Index;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let state = self.value.state;
+        let state = &self.state;
         let mut index = self.index;
         while index < 81 {
             let test = 1u128 << index;

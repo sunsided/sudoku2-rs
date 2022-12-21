@@ -54,7 +54,7 @@ impl Strategy for XWing {
             }
 
             // For each matching cell, scan for rectangles.
-            for tl in indexes {
+            for tl in indexes.iter() {
                 let tl = tl.into_coordinate();
 
                 for x in (tl.x + 1)..9 {

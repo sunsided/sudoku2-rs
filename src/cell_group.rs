@@ -1,4 +1,4 @@
-use crate::index::{Index, IndexBitSet, IndexBitSetIter};
+use crate::index::{Index, IndexBitSet, IntoIndexBitSetIter};
 use crate::Coordinate;
 use std::fmt::{Debug, Formatter};
 use std::slice::Iter;
@@ -215,7 +215,7 @@ impl CellGroups {
     ) -> impl Iterator<Item = Index> + '_ {
         self.groups
             .iter()
-            .filter(move |&&g| g.group_type == group_type && g.contains(index))
+            .filter(move |&g| g.group_type == group_type && g.contains(index))
             .flat_map(CellGroup::iter_indexes)
     }
 
@@ -263,7 +263,7 @@ impl Default for CellGroupType {
 }
 
 /// A group of related indexes, e.g. a row, a column, ...
-#[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Default, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct CellGroup {
     /// The internal ID of this group.
     pub id: Option<usize>,
@@ -304,7 +304,7 @@ impl CellGroup {
 
     #[inline]
     pub fn add_index(&mut self, index: Index) -> &mut Self {
-        self.indexes = self.indexes.with_index(index);
+        self.indexes.insert(index);
         self
     }
 
@@ -328,13 +328,13 @@ impl CellGroup {
 
     /// Iterates all indexes for this cell group.
     #[inline]
-    pub fn iter_indexes(&self) -> IndexBitSetIter {
+    pub fn iter_indexes(&self) -> IntoIndexBitSetIter {
         self.indexes.iter()
     }
 
     /// Iterates all indexes for this cell group.
     #[inline]
-    pub fn into_iter_indexes(self) -> IndexBitSetIter {
+    pub fn into_iter_indexes(&self) -> IntoIndexBitSetIter {
         self.indexes.iter()
     }
 }
