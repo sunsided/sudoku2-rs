@@ -5,10 +5,10 @@ use std::slice::Iter;
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum CellGroupType {
-    Custom,
-    StandardBlock,
-    StandardRow,
-    StandardColumn,
+    Custom = 0,
+    StandardBlock = 1,
+    StandardRow = 2,
+    StandardColumn = 3,
 }
 
 /// Controls which indexes to collect.
@@ -20,10 +20,17 @@ pub enum CollectIndexes {
     IncludeSelf,
 }
 
+#[cfg(feature = "smallvec")]
+type GroupVec = smallvec::SmallVec<[CellGroup; 9]>;
+
+#[cfg(not(feature = "smallvec"))]
+type GroupVec = Vec<CellGroup>;
+
 /// The set of all cell groups relevant to a game.
 #[derive(Default, Debug, Clone)]
 pub struct CellGroups {
-    groups: Vec<CellGroup>,
+    groups: GroupVec,
+    groups_tagged: [GroupVec; 4],
 }
 
 impl AsRef<CellGroups> for &CellGroups {
@@ -44,7 +51,9 @@ impl CellGroups {
             group.id = Some(ids + 1);
         }
 
-        self.groups.push(group);
+        self.groups.push(group.clone());
+        self.groups_tagged[group.group_type as usize].push(group);
+
         self
     }
 
@@ -213,7 +222,7 @@ impl CellGroups {
         index: Index,
         group_type: CellGroupType,
     ) -> impl Iterator<Item = Index> + '_ {
-        self.groups
+        self.groups_tagged[group_type as usize]
             .iter()
             .filter(move |&g| g.group_type == group_type && g.contains(index))
             .flat_map(CellGroup::iter_indexes)

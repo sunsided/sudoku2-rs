@@ -14,8 +14,13 @@ path = "examples/solver.rs"
 name = "benchmark"
 harness = false
 
+[features]
+default = ["smallvec"]
+smallvec = ["dep:smallvec"]
+
 [dependencies]
 log = "0.4.17"
+smallvec = { version = "1.10.0", features = ["union"], optional = true }
 thiserror = "1.0.37"
 
 [dev-dependencies]
