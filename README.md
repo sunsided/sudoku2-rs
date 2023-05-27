@@ -303,7 +303,7 @@ A Hypersudoku example. To run it, execute:
 $ cargo run --release --example solver -- --hyper
 ```
 
-For the code, see [`src/example_games/hypersudoku.rs](src/example_games/hypersudoku.rs).
+For the code, see [`src/example_games/hypersudoku.rs`](src/example_games/hypersudoku.rs).
 
 ### Initial state
 
