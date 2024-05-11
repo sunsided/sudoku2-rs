@@ -1,5 +1,7 @@
 # Sudoku Solver, take 2
 
+[![codecov](https://codecov.io/gh/sunsided/sudoku2-rs/graph/badge.svg?token=AZ7Q2JU140)](https://codecov.io/gh/sunsided/sudoku2-rs)
+
 Another take at Sudoku solving in Rust. This is a weekend-ish remake of my previous pet project
 at [sunsided/rust-sudoku-solver](https://github.com/sunsided/rust-sudoku-solver).
 Unlike the previous experiment, this solver correctly solves Hypersudokus and requires fewer branches.
