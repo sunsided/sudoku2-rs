@@ -3,8 +3,8 @@ use crate::game_state::InvalidGameState;
 use crate::index::Index;
 use crate::state_stack::{StateStack, StateStackEntry};
 use crate::strategies::{
-    HPattern, HiddenSingles, HiddenTwins, NakedSingles, NakedTriples, NakedTwins, Strategy,
-    StrategyResult, XWing,
+    HPattern, HiddenSingles, HiddenTriples, HiddenTwins, NakedSingles, NakedTriples, NakedTwins,
+    Strategy, StrategyResult, XWing,
 };
 use crate::GameState;
 use log::{debug, trace};
@@ -41,6 +41,7 @@ pub struct DefaultSolverConfig {
     pub naked_twins: bool,
     pub hidden_twins: bool,
     pub naked_triples: bool,
+    pub hidden_triples: bool,
     pub h_pattern: bool,
     pub xwings: bool,
 }
@@ -52,6 +53,7 @@ impl Default for DefaultSolverConfig {
             naked_twins: true,
             hidden_twins: true,
             naked_triples: true,
+            hidden_triples: true,
             h_pattern: true,
             xwings: true,
         }
@@ -70,6 +72,7 @@ impl DefaultSolver {
             NakedTwins::new_box(config.naked_twins),
             HiddenTwins::new_box(config.hidden_twins),
             NakedTriples::new_box(config.naked_triples),
+            HiddenTriples::new_box(config.hidden_triples),
             HPattern::new_box(config.h_pattern),
             XWing::new_box(config.xwings),
         ];
