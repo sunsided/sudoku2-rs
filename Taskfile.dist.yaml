@@ -1,0 +1,138 @@
+version: '3'
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+
+  clean:
+    desc: Remove cargo build artifacts
+    cmds:
+      - cargo clean
+
+  fmt:
+    desc: Format all Rust sources
+    cmds:
+      - cargo fmt --all
+
+  fmt:check:
+    desc: Check formatting without modifying files
+    cmds:
+      - cargo fmt --all -- --check
+
+  lint:
+    desc: Run clippy across the workspace (warnings as errors)
+    aliases:
+      - lint:check
+    cmds:
+      - cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+  lint:fix:
+    desc: Auto-fix clippy lints, then format
+    cmds:
+      - cargo clippy --workspace --all-targets --all-features --fix --allow-dirty --allow-staged
+      - task: fmt
+
+  check:
+    desc: Type-check the workspace without producing binaries
+    cmds:
+      - cargo check --workspace --all-targets
+      - task: fmt:check
+
+  build:
+    desc: Build the workspace (debug profile)
+    cmds:
+      - cargo build --workspace --all-targets
+
+  build:release:
+    desc: Build the workspace (release profile)
+    cmds:
+      - cargo build --workspace --release
+
+  test:
+    desc: Run the workspace test suite
+    cmds:
+      - cargo test --workspace --all-targets
+
+  test:doc:
+    desc: Run doctests
+    cmds:
+      - cargo test --workspace --doc
+
+  doc:
+    desc: Build rustdoc for the workspace
+    cmds:
+      - cargo doc --workspace --no-deps
+
+  doc:open:
+    desc: Build and open rustdoc in browser
+    cmds:
+      - cargo doc --workspace --no-deps --open
+
+  bench:
+    desc: Run all benchmarks
+    cmds:
+      - cargo bench
+
+  bench:baseline:
+    desc: Save benchmark results as a named baseline (BASELINE=name, default is main)
+    vars:
+      BASELINE:
+        sh: echo "${BASELINE:-main}"
+    cmds:
+      - cargo bench -- --save-baseline {{.BASELINE}}
+
+  example:solver:
+    desc: Run the solver example in debug mode (pass game/strategy flags via --)
+    cmds:
+      - cargo run --example solver -- {{.CLI_ARGS}}
+
+  example:sudoku:
+    desc: Run standard Sudoku example (Wikipedia puzzle)
+    aliases:
+      - run:sudoku
+    cmds:
+      - cargo run --release --example solver -- --sudoku {{.CLI_ARGS}}
+
+  example:sudoku-ht:
+    desc: Run Sudoku example with known Hidden Twins
+    aliases:
+      - run:sudoku-ht
+    cmds:
+      - cargo run --release --example solver -- --sudoku-ht {{.CLI_ARGS}}
+
+  example:sudoku-xwing:
+    desc: Run Sudoku example with known X-Wings
+    aliases:
+      - run:sudoku-xwing
+    cmds:
+      - cargo run --release --example solver -- --sudoku-xwing {{.CLI_ARGS}}
+
+  example:sudoku-hardest:
+    desc: Run hardest-difficulty Sudoku example
+    aliases:
+      - run:sudoku-hardest
+    cmds:
+      - cargo run --release --example solver -- --sudoku-hardest {{.CLI_ARGS}}
+
+  example:nonomino:
+    desc: Run Nonomino example
+    aliases:
+      - run:nonomino
+    cmds:
+      - cargo run --release --example solver -- --nonomino {{.CLI_ARGS}}
+
+  example:hyper:
+    desc: Run Hypersudoku example
+    aliases:
+      - run:hyper
+    cmds:
+      - cargo run --release --example solver -- --hyper {{.CLI_ARGS}}
+
+  ci:
+    desc: Run the checks expected in CI (fmt, lint, test)
+    cmds:
+      - task: fmt:check
+      - task: lint
+      - task: test
