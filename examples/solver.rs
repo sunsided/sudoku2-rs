@@ -1,6 +1,9 @@
 use clap::{Arg, ArgGroup, Command};
 use std::time::Instant;
-use sudoku2::visualization::{ascii::print_game_state, PrintAscii};
+use sudoku2::visualization::{
+    ascii::{print_game_state, print_solution},
+    PrintAscii,
+};
 use sudoku2::*;
 
 fn main() {
@@ -21,7 +24,6 @@ fn main() {
     } else if matches.get_flag("hypersudoku") {
         example_games::hypersudoku::example_hypersudoku()
     } else {
-        debug_assert!(matches.get_flag("normal"));
         example_games::sudoku::example_sudoku()
     };
 
@@ -57,7 +59,7 @@ fn main() {
     match result {
         Ok(solution) => {
             println!("Found solution:");
-            print_game_state(&solution);
+            print_solution(&solution);
 
             if let Some(expected_solution) = game.expected_solution {
                 if expected_solution.eq(&solution) {

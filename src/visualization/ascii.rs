@@ -94,6 +94,39 @@ pub fn print_game_state(state: &GameState) {
     std::io::stdout().flush().unwrap();
 }
 
+pub fn print_solution(state: &GameState) {
+    let bar = |left: &str, mid: &str, right: &str| {
+        print!("{}", left);
+        for x in 0..9 {
+            print!("───");
+            if x < 8 {
+                print!("{}", mid);
+            }
+        }
+        println!("{}", right);
+    };
+
+    bar("┌", "┬", "┐");
+    for y in 0..9 {
+        print!("│");
+        for x in 0..9 {
+            let cell = state.get_at_xy(x, y);
+            if cell.is_solved() {
+                let value = cell.iter_candidates().next().unwrap();
+                print!(" {} │", value.get());
+            } else {
+                print!(" ? │");
+            }
+        }
+        println!();
+        if y < 8 {
+            bar("├", "┼", "┤");
+        }
+    }
+    bar("└", "┴", "┘");
+    std::io::stdout().flush().unwrap();
+}
+
 pub fn print_cell_groups(groups: &CellGroups) {
     let mut group_names = vec!["@".into()];
     for i in 0..27 {

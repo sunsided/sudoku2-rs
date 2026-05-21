@@ -3,8 +3,7 @@ use crate::Coordinate;
 use std::fmt::{Debug, Formatter};
 use std::slice::Iter;
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-#[derive(Default)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Default)]
 pub enum CellGroupType {
     #[default]
     Custom = 0,
@@ -266,7 +265,6 @@ impl Debug for CellGroupType {
         }
     }
 }
-
 
 /// A group of related indexes, e.g. a row, a column, ...
 #[derive(Default, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
