@@ -48,7 +48,7 @@ impl Strategy for NakedTriples {
         groups: &CellGroups,
         group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
-        let mut applied_some = false;
+        let mut triples_to_apply: Vec<Triple> = Vec::default();
 
         for group in groups.iter().filter(|g| g.group_type == group_type) {
             // Collect cells in this group whose candidate count is two or three.
@@ -100,39 +100,61 @@ impl Strategy for NakedTriples {
                             values = union_ijk
                         );
 
-                        let mut applied_here = false;
-                        for index in group.iter_indexes() {
-                            if triple.contains(&index) {
-                                continue;
-                            }
-                            applied_here |= state.forget_many_at_index(index, union_ijk);
-                        }
-
-                        if applied_here {
-                            debug!(
-                                "Applied Naked Triple at {a:?}, {b:?}, {c:?}: {values:?}",
-                                a = triple[0],
-                                b = triple[1],
-                                c = triple[2],
-                                values = union_ijk
-                            );
-                            applied_some = true;
-                        }
+                        triples_to_apply.push(Triple {
+                            indexes: triple,
+                            group_indexes: *group.indexes(),
+                            values: union_ijk,
+                        });
                     }
                 }
+            }
+        }
+
+        if triples_to_apply.is_empty() {
+            trace!(
+                "No Naked Triples could be applied in {group_type:?}",
+                group_type = group_type
+            );
+            return Ok(StrategyResult::NoChange);
+        }
+
+        // Apply collected eliminations only after the detection pass has
+        // completed for this group_type, so detection always reads a
+        // consistent snapshot of candidate sets.
+        let mut applied_some = false;
+        for triple in triples_to_apply {
+            let mut applied_here = false;
+            for index in triple.group_indexes.into_iter() {
+                if triple.indexes.contains(&index) {
+                    continue;
+                }
+                applied_here |= state.forget_many_at_index(index, triple.values);
+            }
+
+            if applied_here {
+                debug!(
+                    "Applied Naked Triple at {a:?}, {b:?}, {c:?}: {values:?}",
+                    a = triple.indexes[0],
+                    b = triple.indexes[1],
+                    c = triple.indexes[2],
+                    values = triple.values
+                );
+                applied_some = true;
             }
         }
 
         if applied_some {
             Ok(StrategyResult::AppliedChange)
         } else {
-            trace!(
-                "No Naked Triples could be applied in {group_type:?}",
-                group_type = group_type
-            );
             Ok(StrategyResult::NoChange)
         }
     }
+}
+
+struct Triple {
+    indexes: [Index; 3],
+    group_indexes: crate::index::IndexBitSet,
+    values: ValueBitSet,
 }
 
 #[cfg(test)]
