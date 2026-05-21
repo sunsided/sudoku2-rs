@@ -1,3 +1,4 @@
+mod h_pattern;
 mod hidden_singles;
 mod hidden_twins;
 mod naked_singles;
@@ -9,6 +10,7 @@ use crate::game_state::{GameState, InvalidGameState};
 use std::fmt::Debug;
 use std::ops::{BitOr, BitOrAssign};
 
+pub use h_pattern::HPattern;
 pub use hidden_singles::HiddenSingles;
 pub use hidden_twins::HiddenTwins;
 pub use naked_singles::NakedSingles;
