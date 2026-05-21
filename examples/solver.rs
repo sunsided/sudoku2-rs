@@ -31,6 +31,7 @@ fn main() {
         hidden_singles: matches.get_flag("use-hidden-singles"),
         naked_twins: matches.get_flag("use-naked-twins"),
         hidden_twins: matches.get_flag("use-hidden-twins"),
+        h_pattern: matches.get_flag("use-h-pattern"),
         xwings: matches.get_flag("use-xwings"),
     };
 
@@ -39,6 +40,7 @@ fn main() {
     println!("  Hidden Singles: {}", state_str(options.hidden_singles));
     println!("  Naked Twins:    {}", state_str(options.naked_twins));
     println!("  Hidden Twins:   {}", state_str(options.hidden_twins));
+    println!("  H-Pattern:      {}", state_str(options.h_pattern));
     println!("  X-Wings:        {}", state_str(options.xwings));
 
     println!("Cell groups:");
@@ -161,6 +163,13 @@ pub fn build_command() -> Command {
             Arg::new("use-hidden-twins")
                 .long("no-hidden-twins")
                 .help("Disables the Hidden Twins strategy")
+                .action(clap::ArgAction::SetFalse)
+                .help_heading("Strategy"),
+        )
+        .arg(
+            Arg::new("use-h-pattern")
+                .long("no-h-pattern")
+                .help("Disables the H-Pattern strategy")
                 .action(clap::ArgAction::SetFalse)
                 .help_heading("Strategy"),
         )
