@@ -13,12 +13,12 @@ use std::fmt::{Debug, Formatter};
 /// inside a peer group lie in exactly three cells. Those cells may carry
 /// additional candidates, all of which can be eliminated.
 ///
-/// Given cells with candidates `1 4 6`, `1 4 7 8`, `4 6 9`, `1 2 3 5 6`,
-/// `1 4 6 8` and `1 4 7 8 9` in a row, suppose `{2, 3, 5}` only appear in
-/// the fourth cell, `{2}` and `{3}` only in the fourth, `{5}` also only
-/// there - that's a hidden single. For a hidden triple the three values
-/// share exactly three cells; the other candidates in those cells are
-/// removed.
+/// Suppose a row contains the cells `{1, 2, 3, 5, 6}`, `{1, 2, 3}` and
+/// `{5, 6, 9}`, and the digits `2`, `3` and `5` do not appear as
+/// candidates anywhere else in that row. The union of their candidate
+/// positions is exactly these three cells, so the three cells must hold
+/// `{2, 3, 5}` in some order. The other candidates are eliminated,
+/// leaving `{2, 3, 5}`, `{2, 3}` and `{5}` respectively.
 pub struct HiddenTriples {
     enabled: bool,
 }
@@ -54,9 +54,11 @@ impl Strategy for HiddenTriples {
 
         for group in groups.iter().filter(|g| g.group_type == group_type) {
             // For every value, collect the unsolved cells in this group where
-            // the value still appears as a candidate. Values that fit in 2 or 3
-            // cells are eligible for a hidden triple; 1-cell values are hidden
-            // singles and >3-cell values cannot be confined to a 3-cell cover.
+            // the value still appears as a candidate. A digit that fits in
+            // 1, 2, or 3 cells is eligible for a hidden triple - allowing
+            // 1-cell digits means we do not depend on `HiddenSingles` having
+            // run beforehand. Digits with more than three positions cannot be
+            // confined to a 3-cell cover.
             let mut candidate_values: Vec<(Value, IndexBitSet)> = Vec::default();
             for value in Value::range() {
                 let mut positions = IndexBitSet::empty();
@@ -71,7 +73,7 @@ impl Strategy for HiddenTriples {
                         count += 1;
                     }
                 }
-                if (2..=3).contains(&count) {
+                if (1..=3).contains(&count) {
                     candidate_values.push((value, positions));
                 }
             }
@@ -128,12 +130,21 @@ impl Strategy for HiddenTriples {
         // simply assigning `triple.values` could re-introduce candidates
         // earlier strategies had eliminated, since a cell may only carry a
         // proper subset of the triple.
+        //
+        // Overlapping triples detected in the same pass can shrink a cell
+        // mid-loop. If a later triple's intersection turns out to be empty
+        // the position-set snapshot is no longer consistent with the
+        // current board, so we surface that as an invalid state and let
+        // the solver back out of the branch.
         let mut applied_some = false;
         for triple in triples_to_apply {
             let mut applied_here = false;
             for index in triple.indexes.iter() {
                 let current = state.get_at_index(index).to_bitset();
                 let kept = current.with_intersection(triple.values);
+                if kept.is_empty() {
+                    return Err(InvalidGameState {});
+                }
                 if !current.eq(&kept) {
                     state.set_many_at_index(index, kept);
                     applied_here = true;
