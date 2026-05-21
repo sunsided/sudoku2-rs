@@ -171,7 +171,7 @@ impl DefaultSolver {
     fn apply_strategies(&self, state: &GameState) -> Result<(), InvalidGameState> {
         'solving: loop {
             'next_strategy: for strategy in self.strategies.iter().filter(|&s| s.is_enabled()) {
-                match strategy.apply(&state, &self.groups) {
+                match strategy.apply(state, &self.groups) {
                     Err(e) => return Err(e),
                     Ok(outcome) => {
                         #[cfg(debug_assertions)]
@@ -209,7 +209,7 @@ impl DefaultSolver {
         if state.is_consistent(&self.groups) {
             Ok(())
         } else {
-            return Err(InvalidGameState {});
+            Err(InvalidGameState {})
         }
     }
 

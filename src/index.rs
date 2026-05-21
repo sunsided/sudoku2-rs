@@ -35,17 +35,17 @@ impl Deref for Index {
     }
 }
 
-impl Into<u8> for Index {
+impl From<Index> for u8 {
     #[inline]
-    fn into(self) -> u8 {
-        self.0
+    fn from(val: Index) -> Self {
+        val.0
     }
 }
 
-impl Into<u8> for &Index {
+impl From<&Index> for u8 {
     #[inline]
-    fn into(self) -> u8 {
-        self.0
+    fn from(val: &Index) -> Self {
+        val.0
     }
 }
 

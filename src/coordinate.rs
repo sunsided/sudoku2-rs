@@ -36,17 +36,17 @@ impl Debug for Coordinate {
     }
 }
 
-impl Into<Index> for Coordinate {
+impl From<Coordinate> for Index {
     #[inline]
-    fn into(self) -> Index {
-        self.into_index()
+    fn from(val: Coordinate) -> Self {
+        val.into_index()
     }
 }
 
-impl Into<Coordinate> for Index {
+impl From<Index> for Coordinate {
     #[inline]
-    fn into(self) -> Coordinate {
-        self.into_coordinate()
+    fn from(val: Index) -> Self {
+        val.into_coordinate()
     }
 }
 

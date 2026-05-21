@@ -21,6 +21,12 @@ impl AsRef<GameState> for &GameState {
     }
 }
 
+impl Default for GameState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GameState {
     pub fn new() -> Self {
         let mut cells: [MaybeUninit<Cell<GameCell>>; 81] =
@@ -255,7 +261,7 @@ impl GameState {
             }
         }
 
-        return true;
+        true
     }
 
     /// Determines if this board state is consistent (i.e. doesn't
@@ -306,26 +312,26 @@ impl GameState {
         }
 
         // It's just a heuristic. :)
-        return true;
+        true
     }
 
-    pub fn iter_cells(&self) -> CellIterator {
+    pub fn iter_cells(&self) -> CellIterator<'_> {
         CellIterator {
-            state: &self,
+            state: self,
             index: 0,
         }
     }
 
-    pub fn iter(&self) -> GameCellIterator {
+    pub fn iter(&self) -> GameCellIterator<'_> {
         GameCellIterator {
-            state: &self,
+            state: self,
             index: 0,
         }
     }
 
-    pub fn iter_indexed(&self) -> IndexedGameCellIterator {
+    pub fn iter_indexed(&self) -> IndexedGameCellIterator<'_> {
         IndexedGameCellIterator {
-            state: &self,
+            state: self,
             index: 0,
         }
     }

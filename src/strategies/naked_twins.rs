@@ -77,7 +77,7 @@ impl Strategy for NakedTwins {
             }
 
             // At least one other cell is required for a twin pair.
-            if possible_twins.len() < 1 {
+            if possible_twins.is_empty() {
                 continue;
             }
 
@@ -87,7 +87,7 @@ impl Strategy for NakedTwins {
             }
 
             debug_assert_eq!(possible_twins.len(), 1);
-            let other_twin = possible_twins.iter().next().unwrap();
+            let other_twin = possible_twins.first().unwrap();
 
             // Eliminate twin values in other cells.
             observed_twins

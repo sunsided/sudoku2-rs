@@ -39,9 +39,9 @@ impl DerefMut for IndexedGameCell {
     }
 }
 
-impl Into<GameCell> for IndexedGameCell {
-    fn into(self) -> GameCell {
-        self.inner
+impl From<IndexedGameCell> for GameCell {
+    fn from(val: IndexedGameCell) -> Self {
+        val.inner
     }
 }
 

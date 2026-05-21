@@ -70,7 +70,7 @@ impl Strategy for HiddenSingles {
             }
 
             if let Some(value) = values.as_single_value() {
-                if state.place_and_propagate_at_index(index_under_test, value, &groups) {
+                if state.place_and_propagate_at_index(index_under_test, value, groups) {
                     debug!(
                         "Applied Hidden Single {value:?} at {iut:?}",
                         value = value,

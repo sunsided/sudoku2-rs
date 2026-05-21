@@ -4,7 +4,9 @@ use std::fmt::{Debug, Formatter};
 use std::slice::Iter;
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Default)]
 pub enum CellGroupType {
+    #[default]
     Custom = 0,
     StandardBlock = 1,
     StandardRow = 2,
@@ -265,11 +267,6 @@ impl Debug for CellGroupType {
     }
 }
 
-impl Default for CellGroupType {
-    fn default() -> Self {
-        CellGroupType::Custom
-    }
-}
 
 /// A group of related indexes, e.g. a row, a column, ...
 #[derive(Default, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]

@@ -19,11 +19,11 @@ default = ["smallvec"]
 smallvec = ["dep:smallvec"]
 
 [dependencies]
-log = "0.4.17"
-smallvec = { version = "1.10.0", features = ["union"], optional = true }
-thiserror = "1.0.37"
+log = "0.4.29"
+smallvec = { version = "1.15.1", features = ["union"], optional = true }
+thiserror = "2.0.18"
 
 [dev-dependencies]
-clap = "4.0.29"
-criterion = "0.4.0"
-env_logger = "0.10.0"
+clap = "4.6.1"
+criterion = "0.8.2"
+env_logger = "0.11.10"
