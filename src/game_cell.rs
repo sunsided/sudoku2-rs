@@ -147,7 +147,7 @@ impl GameCell {
     /// Determines whether this cell is impossible to solve.
     #[inline]
     pub const fn is_impossible(&self) -> bool {
-        self.empty()
+        self.is_empty()
     }
 
     /// Gets the number of possible values for this cell.
@@ -162,8 +162,14 @@ impl GameCell {
 
     /// Determines whether this cell has any value candidates.
     #[inline]
-    pub const fn empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    #[deprecated(since = "0.1.1", note = "renamed to `is_empty` for stdlib conformance")]
+    #[inline]
+    pub const fn empty(&self) -> bool {
+        self.is_empty()
     }
 
     /// Gets the possible values as a bitset.

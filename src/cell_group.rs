@@ -65,11 +65,10 @@ impl CellGroups {
     //noinspection DuplicatedCode
     fn with_default_rows(mut self) -> Self {
         let mut check = IndexBitSet::ALL;
-        let mut ids = self.get_highest_id();
+        let base = self.get_highest_id();
 
-        for y in 0..9 {
+        for (ids, y) in (base + 1..).zip(0..9u8) {
             let mut group = CellGroup::new(ids, CellGroupType::StandardRow);
-            ids += 1;
             for x in 0..9 {
                 let coord = Coordinate::new(x, y).into_index();
                 group.add_index(coord);
@@ -92,10 +91,9 @@ impl CellGroups {
     //noinspection DuplicatedCode
     fn with_default_columns(mut self) -> Self {
         let mut check = IndexBitSet::ALL;
-        let mut ids = self.get_highest_id();
+        let base = self.get_highest_id();
 
-        for x in 0..9 {
-            ids += 1;
+        for (ids, x) in (base + 1..).zip(0..9u8) {
             let mut group = CellGroup::new(ids, CellGroupType::StandardColumn);
             for y in 0..9 {
                 let coord = Coordinate::new(x, y).into_index();
@@ -326,8 +324,14 @@ impl CellGroup {
 
     /// Determines whether this group has any indexes.
     #[inline]
-    pub const fn empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    #[deprecated(since = "0.1.1", note = "renamed to `is_empty` for stdlib conformance")]
+    #[inline]
+    pub const fn empty(&self) -> bool {
+        self.is_empty()
     }
 
     /// Iterates all indexes for this cell group.

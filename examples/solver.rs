@@ -50,7 +50,7 @@ fn main() {
     assert!(game.initial_state.is_consistent(&game.groups));
 
     let mut solver = DefaultSolver::new_with(&game.groups, &options);
-    solver.set_print_fn(|state| print_game_state(state));
+    solver.set_print_fn(print_game_state);
 
     let now = Instant::now();
     let result = solver.solve(&game.initial_state);
@@ -91,7 +91,7 @@ fn state_str(enabled: bool) -> &'static str {
 }
 
 pub fn build_command() -> Command {
-    let command = Command::new("Sudoku Solver Example")
+    Command::new("Sudoku Solver Example")
         .version("0.1.0")
         .author("Markus Mayer")
         .arg(
@@ -170,7 +170,5 @@ pub fn build_command() -> Command {
                 .help("Disables the X-Wings strategy")
                 .action(clap::ArgAction::SetFalse)
                 .help_heading("Strategy"),
-        );
-
-    command
+        )
 }

@@ -88,8 +88,8 @@ impl Strategy for XWing {
                             right_count += indexes.contains_xy(br.x, xy) as u32;
                         }
 
-                        if !(left_count == 2 && right_count == 2)
-                            && !(top_count == 2 && bottom_count == 2)
+                        if !(left_count == 2 && right_count == 2
+                            || top_count == 2 && bottom_count == 2)
                         {
                             continue;
                         }
