@@ -291,6 +291,12 @@ fn apply_vertical(state: &GameState, value: Value, stack: u8) -> bool {
 /// Hypersudoku windows, etc.). Standard 3x3 blocks are handled by the
 /// faster band/stack code above.
 fn apply_custom_blocks(state: &GameState, groups: &CellGroups) -> bool {
+    // Bail out before any heap allocation when the puzzle has no
+    // custom block groups (classic Sudoku, the hot bench path).
+    if !groups.iter().any(|g| g.group_type == CellGroupType::Custom) {
+        return false;
+    }
+
     let mut blocks: Vec<&CellGroup> = Vec::with_capacity(9);
     let mut lines: Vec<&CellGroup> = Vec::with_capacity(18);
     for g in groups.iter() {
@@ -627,6 +633,40 @@ mod tests {
         for raw in &row0_cells {
             let index = crate::Index::new(*raw);
             assert!(state.get_at_index(index).contains(Value::ONE));
+        }
+    }
+
+    #[test]
+    fn claiming_fires_on_nonomino_custom_block() {
+        // Nonomino block 0 = { 0, 1, 2, 9, 10, 11, 18, 27, 28 } overlaps
+        // row 0 in { 0, 1, 2 }. Strip value 5 from row 0 cells 3..=8 so
+        // row 0's 5-candidates lie entirely inside block 0. Claiming
+        // should then eliminate 5 from block 0's cells outside row 0:
+        // { 9, 10, 11, 18, 27, 28 }.
+        let game = crate::example_games::nonomino::example_nonomino();
+        let state = GameState::new();
+
+        for raw in 3u8..=8 {
+            state.forget_at_index(crate::Index::new(raw), Value::FIVE);
+        }
+
+        let strat = HPattern { enabled: true };
+        let res = strat.apply(&state, &game.groups).unwrap();
+        assert_eq!(res, StrategyResult::AppliedChange);
+
+        // Block 0 cells outside row 0 must lose 5 as a candidate.
+        for raw in [9u8, 10, 11, 18, 27, 28] {
+            let index = crate::Index::new(raw);
+            assert!(
+                !state.get_at_index(index).contains(Value::FIVE),
+                "5 should have been eliminated from block 0 at index {raw}",
+                raw = raw
+            );
+        }
+        // The three intersecting row-0 cells must still hold 5.
+        for raw in [0u8, 1, 2] {
+            let index = crate::Index::new(raw);
+            assert!(state.get_at_index(index).contains(Value::FIVE));
         }
     }
 
