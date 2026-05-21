@@ -36,3 +36,34 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: lcov.info
         fail_ci_if_error: true
+
+  fuzz:
+    name: Fuzz build & smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            .
+            fuzz
+      - name: Install cargo-fuzz
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz
+      - name: Build all fuzz targets
+        run: cargo +nightly fuzz build
+      - name: Smoke-run solve_sudoku
+        run: cargo +nightly fuzz run solve_sudoku -- -runs=2000 -max_total_time=30
+      - name: Smoke-run value_bitset
+        run: cargo +nightly fuzz run value_bitset -- -runs=5000 -max_total_time=30
+      - name: Smoke-run game_state_ops
+        run: cargo +nightly fuzz run game_state_ops -- -runs=5000 -max_total_time=30
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-artifacts
+          path: fuzz/artifacts/
+          if-no-files-found: ignore
