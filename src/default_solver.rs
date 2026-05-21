@@ -64,9 +64,9 @@ impl DefaultSolver {
         let strategies: Vec<Box<dyn Strategy>> = vec![
             NakedSingles::new_box(),
             HiddenSingles::new_box(config.hidden_singles),
+            HPattern::new_box(config.h_pattern),
             NakedTwins::new_box(config.naked_twins),
             HiddenTwins::new_box(config.hidden_twins),
-            HPattern::new_box(config.h_pattern),
             XWing::new_box(config.xwings),
         ];
 

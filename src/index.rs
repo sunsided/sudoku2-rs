@@ -60,7 +60,7 @@ impl Debug for Index {
 ///
 /// ## Technical Notes
 /// Practically this implementation allows for storing up to 127 different indexes.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct IndexBitSet {
     /// We anticipate at most 81 fields on a standard Sudoku game.
     /// We use a 128-bit type here to directly encode the field values,
@@ -141,6 +141,25 @@ impl IndexBitSet {
     pub const fn overlaps_with(&self, other: &IndexBitSet) -> bool {
         let state = (self.state & other.state) & Self::MASK;
         state > 0
+    }
+
+    #[inline]
+    pub const fn intersect(&self, other: &IndexBitSet) -> IndexBitSet {
+        IndexBitSet {
+            state: (self.state & other.state) & Self::MASK,
+        }
+    }
+
+    #[inline]
+    pub const fn subtract(&self, other: &IndexBitSet) -> IndexBitSet {
+        IndexBitSet {
+            state: (self.state & !other.state) & Self::MASK,
+        }
+    }
+
+    #[inline]
+    pub const fn is_subset_of(&self, other: &IndexBitSet) -> bool {
+        (self.state & !other.state) & Self::MASK == 0
     }
 
     #[inline]
