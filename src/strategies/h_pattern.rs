@@ -181,7 +181,18 @@ fn apply_horizontal(state: &GameState, value: Value, band: u8) -> bool {
     }
 
     for coord in to_forget {
-        if state.forget_at_index(coord.into_index(), value) {
+        let index = coord.into_index();
+        // Skip already-solved (or impossible) cells. The strategy queues
+        // eliminations from a chute-level snapshot, and within a single
+        // apply() call NakedSingles has not yet re-propagated cells that
+        // earlier H-pattern deductions reduced to a single candidate;
+        // stripping the placed digit from such a cell would turn it
+        // empty. Any genuine inconsistency that this guard masks is
+        // re-detected by the next consistency check on the branch.
+        if state.get_at_index(index).len() <= 1 {
+            continue;
+        }
+        if state.forget_at_index(index, value) {
             applied = true;
             trace!(
                 "H-Pattern eliminated {value:?} at {coord:?}",
@@ -277,7 +288,18 @@ fn apply_vertical(state: &GameState, value: Value, stack: u8) -> bool {
     }
 
     for coord in to_forget {
-        if state.forget_at_index(coord.into_index(), value) {
+        let index = coord.into_index();
+        // Skip already-solved (or impossible) cells. The strategy queues
+        // eliminations from a chute-level snapshot, and within a single
+        // apply() call NakedSingles has not yet re-propagated cells that
+        // earlier H-pattern deductions reduced to a single candidate;
+        // stripping the placed digit from such a cell would turn it
+        // empty. Any genuine inconsistency that this guard masks is
+        // re-detected by the next consistency check on the branch.
+        if state.get_at_index(index).len() <= 1 {
+            continue;
+        }
+        if state.forget_at_index(index, value) {
             applied = true;
             trace!(
                 "H-Pattern eliminated {value:?} at {coord:?}",
@@ -405,6 +427,68 @@ mod tests {
                 col = col
             );
         }
+    }
+
+    #[test]
+    fn does_not_empty_solved_cell_in_target_row() {
+        // Simulate a stale snapshot: box 0 still has 1 as a candidate
+        // confined to row 0, but row 0 also has 1 already placed at a
+        // solved cell in box 2. Pointing would normally target that
+        // solved cell; the guard must prevent emptying it.
+        let groups = standard_groups();
+        let state = GameState::new();
+
+        // Strip value 1 such that:
+        // - Box 0 row 0 keeps 1-candidates (columns 0..3).
+        // - Box 0 rows 1, 2 lose 1 (so box 0 is confined to row 0).
+        // - Box 1 spreads 1 across rows 0, 1, 2 (not confined).
+        // - Box 2: cell (8,0) is the *only* cell with 1, and we then
+        //   collapse it to exactly { 1 } so it counts as solved.
+        let strip: &[(u8, u8)] = &[
+            (0, 1),
+            (1, 1),
+            (2, 1),
+            (0, 2),
+            (1, 2),
+            (2, 2),
+            (4, 0),
+            (5, 0),
+            (3, 1),
+            (5, 1),
+            (3, 2),
+            (4, 2),
+            (6, 0),
+            (7, 0),
+            (6, 1),
+            (7, 1),
+            (8, 1),
+            (6, 2),
+            (7, 2),
+            (8, 2),
+        ];
+        for &(x, y) in strip {
+            state.forget_at_index(Coordinate::new(x, y).into_index(), Value::ONE);
+        }
+        // Collapse (8,0) so it is solved with value 1.
+        for v in [
+            Value::TWO,
+            Value::THREE,
+            Value::FOUR,
+            Value::FIVE,
+            Value::SIX,
+            Value::SEVEN,
+            Value::EIGHT,
+            Value::NINE,
+        ] {
+            state.forget_at_index(Coordinate::new(8, 0).into_index(), v);
+        }
+        assert!(state.get_at_xy(8, 0).is_solved());
+
+        let strat = HPattern { enabled: true };
+        // Should run without panicking and without emptying (8,0).
+        let _ = strat.apply(&state, &groups).unwrap();
+        assert!(state.get_at_xy(8, 0).contains(Value::ONE));
+        assert!(state.get_at_xy(8, 0).is_solved());
     }
 
     #[test]
