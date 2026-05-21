@@ -316,6 +316,12 @@ impl CellGroup {
         self.indexes.contains(index)
     }
 
+    /// The underlying [`IndexBitSet`] of cell indexes belonging to this group.
+    #[inline]
+    pub const fn indexes(&self) -> &IndexBitSet {
+        &self.indexes
+    }
+
     /// Gets the number of indexes for this group.
     #[inline]
     pub const fn len(&self) -> usize {
