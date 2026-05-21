@@ -31,11 +31,15 @@ impl GameState {
     pub fn new() -> Self {
         let mut cells: [MaybeUninit<Cell<GameCell>>; 81] =
             unsafe { MaybeUninit::uninit().assume_init() };
-        for i in 0..81 {
-            cells[i].write(Cell::new(GameCell::default()));
+        for cell in &mut cells {
+            cell.write(Cell::new(GameCell::default()));
         }
         Self {
-            cells: unsafe { std::mem::transmute(cells) },
+            cells: unsafe {
+                std::mem::transmute::<[MaybeUninit<Cell<GameCell>>; 81], [Cell<GameCell>; 81]>(
+                    cells,
+                )
+            },
         }
     }
 
@@ -44,14 +48,18 @@ impl GameState {
             unsafe { MaybeUninit::uninit().assume_init() };
 
         let values = values.into();
-        for i in 0..81 {
-            match values[i] {
-                Some(value) => cells[i].write(Cell::new(GameCell::from_value(value))),
-                None => cells[i].write(Cell::new(GameCell::default())),
+        for (cell, value) in cells.iter_mut().zip(values) {
+            match value {
+                Some(value) => cell.write(Cell::new(GameCell::from_value(value))),
+                None => cell.write(Cell::new(GameCell::default())),
             };
         }
         Self {
-            cells: unsafe { std::mem::transmute(cells) },
+            cells: unsafe {
+                std::mem::transmute::<[MaybeUninit<Cell<GameCell>>; 81], [Cell<GameCell>; 81]>(
+                    cells,
+                )
+            },
         }
     }
 

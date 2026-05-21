@@ -18,7 +18,7 @@ pub struct DefaultSolver {
 
 #[derive(Debug, thiserror::Error)]
 #[error("The game is unsolvable")]
-pub struct Unsolvable(pub GameState);
+pub struct Unsolvable(pub Box<GameState>);
 
 #[derive(Debug)]
 struct SmallestIndex {
@@ -164,7 +164,7 @@ impl DefaultSolver {
             }
         }
 
-        Err(Unsolvable(last_seen_state))
+        Err(Unsolvable(Box::new(last_seen_state)))
     }
 
     /// Applies different strategies for solving the board without branching.
