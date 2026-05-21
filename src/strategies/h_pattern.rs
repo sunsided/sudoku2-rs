@@ -436,6 +436,7 @@ mod tests {
             hidden_singles: true,
             naked_twins: true,
             hidden_twins: true,
+            naked_triples: true,
             h_pattern: false,
             xwings: true,
         };
