@@ -2,6 +2,7 @@ mod h_pattern;
 mod hidden_singles;
 mod hidden_twins;
 mod naked_singles;
+mod naked_triples;
 mod naked_twins;
 mod xwing;
 
@@ -14,6 +15,7 @@ pub use h_pattern::HPattern;
 pub use hidden_singles::HiddenSingles;
 pub use hidden_twins::HiddenTwins;
 pub use naked_singles::NakedSingles;
+pub use naked_triples::NakedTriples;
 pub use naked_twins::NakedTwins;
 pub use xwing::XWing;
 
