@@ -88,6 +88,18 @@ tasks:
     cmds:
       - cargo run --example solver -- {{.CLI_ARGS}}
 
+  examples:
+    desc: Run all examples
+    aliases:
+      - run
+    cmds:
+      - task: example:sudoku
+      - task: example:sudoku-ht
+      - task: example:sudoku-xwing
+      - task: example:sudoku-hardest
+      - task: example:nonomino
+      - task: example:hyper
+
   example:sudoku:
     desc: Run standard Sudoku example (Wikipedia puzzle)
     aliases:
