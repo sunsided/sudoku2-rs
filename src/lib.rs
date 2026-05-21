@@ -11,7 +11,7 @@ mod strategies;
 mod value;
 pub mod visualization;
 
-pub use crate::cell_group::{CellGroup, CellGroups};
+pub use crate::cell_group::{CellGroup, CellGroupType, CellGroups, CollectIndexes};
 pub use crate::coordinate::Coordinate;
 pub use crate::default_solver::{DefaultSolver, DefaultSolverConfig, Unsolvable};
 pub use crate::game::Game;

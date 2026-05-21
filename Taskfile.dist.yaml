@@ -136,3 +136,48 @@ tasks:
       - task: fmt:check
       - task: lint
       - task: test
+
+  fuzz:list:
+    desc: List available cargo-fuzz targets
+    cmds:
+      - cargo +nightly fuzz list
+
+  fuzz:build:
+    desc: Build all fuzz targets (nightly toolchain)
+    cmds:
+      - cargo +nightly fuzz build
+
+  fuzz:run:
+    desc: Run a specific fuzz target (TARGET=name, extra libFuzzer flags via --)
+    vars:
+      TARGET:
+        sh: echo "${TARGET:-solve_sudoku}"
+    cmds:
+      - cargo +nightly fuzz run {{.TARGET}} -- {{.CLI_ARGS}}
+
+  fuzz:solve:
+    desc: Fuzz the default Sudoku solver against arbitrary input boards
+    cmds:
+      - cargo +nightly fuzz run solve_sudoku -- {{.CLI_ARGS}}
+
+  fuzz:bitset:
+    desc: Fuzz ValueBitSet operations and invariants
+    cmds:
+      - cargo +nightly fuzz run value_bitset -- {{.CLI_ARGS}}
+
+  fuzz:state:
+    desc: Fuzz GameState place/forget/propagate sequences
+    cmds:
+      - cargo +nightly fuzz run game_state_ops -- {{.CLI_ARGS}}
+
+  fuzz:smoke:
+    desc: Short smoke run of every fuzz target (10s each)
+    cmds:
+      - cargo +nightly fuzz run solve_sudoku -- -max_total_time=10
+      - cargo +nightly fuzz run value_bitset -- -max_total_time=10
+      - cargo +nightly fuzz run game_state_ops -- -max_total_time=10
+
+  fuzz:clean:
+    desc: Remove fuzz build artifacts and corpora
+    cmds:
+      - cargo +nightly fuzz clean

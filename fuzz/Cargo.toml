@@ -1,0 +1,35 @@
+[package]
+name = "sudoku2-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.sudoku2]
+path = ".."
+
+[[bin]]
+name = "solve_sudoku"
+path = "fuzz_targets/solve_sudoku.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "value_bitset"
+path = "fuzz_targets/value_bitset.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "game_state_ops"
+path = "fuzz_targets/game_state_ops.rs"
+test = false
+doc = false
+bench = false
