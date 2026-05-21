@@ -1,7 +1,18 @@
 #![no_main]
 
+use std::sync::OnceLock;
+
 use libfuzzer_sys::fuzz_target;
 use sudoku2::{CellGroups, CollectIndexes, GameState, Index, Value};
+
+fn sudoku_groups() -> &'static CellGroups {
+    static GROUPS: OnceLock<CellGroups> = OnceLock::new();
+    GROUPS.get_or_init(|| {
+        CellGroups::default()
+            .with_default_sudoku_blocks()
+            .with_default_rows_and_columns()
+    })
+}
 
 fn to_value(byte: u8) -> Option<Value> {
     Value::try_from((byte % 9) + 1).ok()
@@ -12,13 +23,10 @@ fn to_index(byte: u8) -> Index {
 }
 
 fuzz_target!(|data: &[u8]| {
-    let groups = CellGroups::default()
-        .with_default_sudoku_blocks()
-        .with_default_rows_and_columns();
+    let groups = sudoku_groups();
     let state = GameState::new();
 
-    let mut iter = data.chunks_exact(3);
-    while let Some(chunk) = iter.next() {
+    for chunk in data.chunks_exact(3) {
         let op = chunk[0];
         let index = to_index(chunk[1]);
         let value = match to_value(chunk[2]) {
@@ -32,7 +40,7 @@ fuzz_target!(|data: &[u8]| {
                 if !cell.contains(value) || cell.is_solved() {
                     continue;
                 }
-                state.place_and_propagate_at_index(index, value, &groups);
+                state.place_and_propagate_at_index(index, value, groups);
 
                 let after = state.get_at_index(index);
                 assert!(after.is_solved());
@@ -58,8 +66,8 @@ fuzz_target!(|data: &[u8]| {
                 assert!(!state.get_at_index(index).contains(value));
             }
             2 => {
-                let _ = state.is_consistent(&groups);
-                let _ = state.is_solved(&groups);
+                let _ = state.is_consistent(groups);
+                let _ = state.is_solved(groups);
             }
             _ => unreachable!(),
         }

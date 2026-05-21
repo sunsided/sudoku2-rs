@@ -166,6 +166,12 @@ impl GameCell {
         self.len() == 0
     }
 
+    #[deprecated(since = "0.1.1", note = "renamed to `is_empty` for stdlib conformance")]
+    #[inline]
+    pub const fn empty(&self) -> bool {
+        self.is_empty()
+    }
+
     /// Gets the possible values as a bitset.
     #[inline]
     pub fn as_bitset(&self) -> &ValueBitSet {

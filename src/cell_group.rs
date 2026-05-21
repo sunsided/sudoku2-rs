@@ -67,7 +67,7 @@ impl CellGroups {
         let mut check = IndexBitSet::ALL;
         let base = self.get_highest_id();
 
-        for (ids, y) in (base..).zip(0..9u8) {
+        for (ids, y) in (base + 1..).zip(0..9u8) {
             let mut group = CellGroup::new(ids, CellGroupType::StandardRow);
             for x in 0..9 {
                 let coord = Coordinate::new(x, y).into_index();
@@ -326,6 +326,12 @@ impl CellGroup {
     #[inline]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    #[deprecated(since = "0.1.1", note = "renamed to `is_empty` for stdlib conformance")]
+    #[inline]
+    pub const fn empty(&self) -> bool {
+        self.is_empty()
     }
 
     /// Iterates all indexes for this cell group.

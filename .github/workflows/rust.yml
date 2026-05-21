@@ -47,7 +47,9 @@ jobs:
       FUZZ_TARGET_TRIPLE: x86_64-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-05-15
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
@@ -58,13 +60,13 @@ jobs:
         with:
           tool: cargo-fuzz
       - name: Build all fuzz targets
-        run: cargo +nightly fuzz build --target ${{ env.FUZZ_TARGET_TRIPLE }}
+        run: cargo fuzz build --target ${{ env.FUZZ_TARGET_TRIPLE }}
       - name: Smoke-run solve_sudoku
-        run: cargo +nightly fuzz run --target ${{ env.FUZZ_TARGET_TRIPLE }} solve_sudoku -- -runs=2000 -max_total_time=30
+        run: cargo fuzz run --target ${{ env.FUZZ_TARGET_TRIPLE }} solve_sudoku -- -runs=2000 -max_total_time=30
       - name: Smoke-run value_bitset
-        run: cargo +nightly fuzz run --target ${{ env.FUZZ_TARGET_TRIPLE }} value_bitset -- -runs=5000 -max_total_time=30
+        run: cargo fuzz run --target ${{ env.FUZZ_TARGET_TRIPLE }} value_bitset -- -runs=5000 -max_total_time=30
       - name: Smoke-run game_state_ops
-        run: cargo +nightly fuzz run --target ${{ env.FUZZ_TARGET_TRIPLE }} game_state_ops -- -runs=5000 -max_total_time=30
+        run: cargo fuzz run --target ${{ env.FUZZ_TARGET_TRIPLE }} game_state_ops -- -runs=5000 -max_total_time=30
       - name: Upload crash artifacts
         if: failure()
         uses: actions/upload-artifact@v4

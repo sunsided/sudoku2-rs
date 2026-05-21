@@ -1,0 +1,4 @@
+# GameState is ~162 bytes; both Ok and Err variants of solver Results
+# wrap it, so flagging the Err side as "large" adds noise without
+# improving the hot path. Bump the threshold above that size.
+large-error-threshold = 256
