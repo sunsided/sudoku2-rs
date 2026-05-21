@@ -40,6 +40,11 @@ jobs:
   fuzz:
     name: Fuzz build & smoke
     runs-on: ubuntu-latest
+    env:
+      # cargo-fuzz's pre-built release binary (via taiki-e/install-action) is
+      # musl-linked, so its compile-time HOST default targets musl. Sanitizers
+      # are incompatible with statically linked libc, so force the gnu target.
+      FUZZ_TARGET_TRIPLE: x86_64-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
@@ -53,13 +58,13 @@ jobs:
         with:
           tool: cargo-fuzz
       - name: Build all fuzz targets
-        run: cargo +nightly fuzz build
+        run: cargo +nightly fuzz build --target ${{ env.FUZZ_TARGET_TRIPLE }}
       - name: Smoke-run solve_sudoku
-        run: cargo +nightly fuzz run solve_sudoku -- -runs=2000 -max_total_time=30
+        run: cargo +nightly fuzz run --target ${{ env.FUZZ_TARGET_TRIPLE }} solve_sudoku -- -runs=2000 -max_total_time=30
       - name: Smoke-run value_bitset
-        run: cargo +nightly fuzz run value_bitset -- -runs=5000 -max_total_time=30
+        run: cargo +nightly fuzz run --target ${{ env.FUZZ_TARGET_TRIPLE }} value_bitset -- -runs=5000 -max_total_time=30
       - name: Smoke-run game_state_ops
-        run: cargo +nightly fuzz run game_state_ops -- -runs=5000 -max_total_time=30
+        run: cargo +nightly fuzz run --target ${{ env.FUZZ_TARGET_TRIPLE }} game_state_ops -- -runs=5000 -max_total_time=30
       - name: Upload crash artifacts
         if: failure()
         uses: actions/upload-artifact@v4
