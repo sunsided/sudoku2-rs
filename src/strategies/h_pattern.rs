@@ -439,6 +439,7 @@ mod tests {
             naked_triples: true,
             hidden_triples: true,
             h_pattern: false,
+            skyscraper: true,
             xwings: true,
         };
         let solver = DefaultSolver::new_with(&game.groups, &config_no_h);

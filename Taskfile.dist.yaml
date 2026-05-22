@@ -96,6 +96,7 @@ tasks:
       - task: example:sudoku
       - task: example:sudoku-ht
       - task: example:sudoku-xwing
+      - task: example:sudoku-skyscraper
       - task: example:sudoku-hardest
       - task: example:nonomino
       - task: example:hyper
@@ -120,6 +121,13 @@ tasks:
       - run:sudoku-xwing
     cmds:
       - cargo run --release --example solver -- --sudoku-xwing {{.CLI_ARGS}}
+
+  example:sudoku-skyscraper:
+    desc: Run Sudoku example with a known Skyscraper
+    aliases:
+      - run:sudoku-skyscraper
+    cmds:
+      - cargo run --release --example solver -- --sudoku-skyscraper {{.CLI_ARGS}}
 
   example:sudoku-hardest:
     desc: Run hardest-difficulty Sudoku example
