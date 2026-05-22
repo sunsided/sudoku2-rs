@@ -17,6 +17,8 @@ fn main() {
         example_games::sudoku2::example_sudoku()
     } else if matches.get_flag("normal-xwing") {
         example_games::sudoku_xwings::example_sudoku()
+    } else if matches.get_flag("normal-skyscraper") {
+        example_games::sudoku_skyscraper::example_sudoku()
     } else if matches.get_flag("normal-hardest") {
         example_games::sudoku2::example_sudoku_hardest()
     } else if matches.get_flag("nonomino") {
@@ -34,6 +36,7 @@ fn main() {
         naked_triples: matches.get_flag("use-naked-triples"),
         hidden_triples: matches.get_flag("use-hidden-triples"),
         h_pattern: matches.get_flag("use-h-pattern"),
+        skyscraper: matches.get_flag("use-skyscraper"),
         xwings: matches.get_flag("use-xwings"),
     };
 
@@ -45,6 +48,7 @@ fn main() {
     println!("  Naked Triples:  {}", state_str(options.naked_triples));
     println!("  Hidden Triples: {}", state_str(options.hidden_triples));
     println!("  H-Pattern:      {}", state_str(options.h_pattern));
+    println!("  Skyscraper:     {}", state_str(options.skyscraper));
     println!("  X-Wings:        {}", state_str(options.xwings));
 
     println!("Cell groups:");
@@ -125,6 +129,14 @@ pub fn build_command() -> Command {
                 .group("type"),
         )
         .arg(
+            Arg::new("normal-skyscraper")
+                .long("sudoku-skyscraper")
+                .help("Solve a regular Sudoku with a known Skyscraper")
+                .action(clap::ArgAction::SetTrue)
+                .help_heading("Game type")
+                .group("type"),
+        )
+        .arg(
             Arg::new("normal-hardest")
                 .long("sudoku-hardest")
                 .help("Solve a Sudoku of \"hardest\" difficulty")
@@ -188,6 +200,13 @@ pub fn build_command() -> Command {
             Arg::new("use-h-pattern")
                 .long("no-h-pattern")
                 .help("Disables the H-Pattern strategy")
+                .action(clap::ArgAction::SetFalse)
+                .help_heading("Strategy"),
+        )
+        .arg(
+            Arg::new("use-skyscraper")
+                .long("no-skyscraper")
+                .help("Disables the Skyscraper strategy")
                 .action(clap::ArgAction::SetFalse)
                 .help_heading("Strategy"),
         )

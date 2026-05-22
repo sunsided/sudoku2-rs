@@ -4,7 +4,7 @@ use crate::index::Index;
 use crate::state_stack::{StateStack, StateStackEntry};
 use crate::strategies::{
     HPattern, HiddenSingles, HiddenTriples, HiddenTwins, NakedSingles, NakedTriples, NakedTwins,
-    Strategy, StrategyResult, XWing,
+    Skyscraper, Strategy, StrategyResult, XWing,
 };
 use crate::GameState;
 use log::{debug, trace};
@@ -43,6 +43,7 @@ pub struct DefaultSolverConfig {
     pub naked_triples: bool,
     pub hidden_triples: bool,
     pub h_pattern: bool,
+    pub skyscraper: bool,
     pub xwings: bool,
 }
 
@@ -55,6 +56,7 @@ impl Default for DefaultSolverConfig {
             naked_triples: true,
             hidden_triples: true,
             h_pattern: true,
+            skyscraper: true,
             xwings: true,
         }
     }
@@ -74,6 +76,7 @@ impl DefaultSolver {
             NakedTriples::new_box(config.naked_triples),
             HiddenTriples::new_box(config.hidden_triples),
             HPattern::new_box(config.h_pattern),
+            Skyscraper::new_box(config.skyscraper),
             XWing::new_box(config.xwings),
         ];
 
@@ -323,6 +326,18 @@ mod tests {
     #[test]
     fn solving_sudoku_with_naked_xwings() {
         let game = crate::example_games::sudoku_xwings::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+        let result = solver.solve(&game);
+        assert!(result.is_ok());
+
+        let solution = result.unwrap();
+        assert!(solution.is_consistent(&game.groups));
+        assert!(solution.is_solved(&game.groups));
+    }
+
+    #[test]
+    fn solving_sudoku_with_skyscraper() {
+        let game = crate::example_games::sudoku_skyscraper::example_sudoku();
         let solver = DefaultSolver::new(&game);
         let result = solver.solve(&game);
         assert!(result.is_ok());

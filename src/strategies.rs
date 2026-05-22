@@ -5,6 +5,7 @@ mod hidden_twins;
 mod naked_singles;
 mod naked_triples;
 mod naked_twins;
+mod skyscraper;
 mod xwing;
 
 use crate::cell_group::{CellGroupType, CellGroups};
@@ -19,6 +20,7 @@ pub use hidden_twins::HiddenTwins;
 pub use naked_singles::NakedSingles;
 pub use naked_triples::NakedTriples;
 pub use naked_twins::NakedTwins;
+pub use skyscraper::Skyscraper;
 pub use xwing::XWing;
 
 pub trait Strategy: Debug {
