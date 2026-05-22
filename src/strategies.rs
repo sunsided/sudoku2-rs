@@ -108,3 +108,31 @@ impl BitOrAssign for StrategyResult {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bitor_truth_table() {
+        use StrategyResult::*;
+        assert_eq!(NoChange | NoChange, NoChange);
+        assert_eq!(NoChange | AppliedChange, AppliedChange);
+        assert_eq!(AppliedChange | NoChange, AppliedChange);
+        assert_eq!(AppliedChange | AppliedChange, AppliedChange);
+    }
+
+    #[test]
+    fn bitor_assign_only_promotes_to_applied() {
+        let mut r = StrategyResult::NoChange;
+        r |= StrategyResult::NoChange;
+        assert_eq!(r, StrategyResult::NoChange);
+
+        r |= StrategyResult::AppliedChange;
+        assert_eq!(r, StrategyResult::AppliedChange);
+
+        // Once AppliedChange, a NoChange merge must not demote it.
+        r |= StrategyResult::NoChange;
+        assert_eq!(r, StrategyResult::AppliedChange);
+    }
+}

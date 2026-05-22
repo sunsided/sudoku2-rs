@@ -423,4 +423,101 @@ mod tests {
 
         CellGroups::default().add_group(group_a).add_group(group_b);
     }
+
+    #[test]
+    fn cell_group_builder_helpers() {
+        let g = CellGroup::default()
+            .with_type(CellGroupType::StandardBlock)
+            .with_index(Index::new(0))
+            .with_index(Index::new(8));
+        assert_eq!(g.group_type, CellGroupType::StandardBlock);
+        assert!(g.contains(Index::new(0)));
+        assert!(g.contains(Index::new(8)));
+        assert_eq!(g.len(), 2);
+        assert!(!g.is_empty());
+
+        let empty = CellGroup::default();
+        assert_eq!(empty.len(), 0);
+        assert!(empty.is_empty());
+        #[allow(deprecated)]
+        {
+            assert!(empty.empty());
+        }
+    }
+
+    #[test]
+    fn cell_group_iter_indexes_variants_agree() {
+        let g = CellGroup::from_iter([Index::new(1), Index::new(4), Index::new(7)]);
+        let a: Vec<_> = g.iter_indexes().collect();
+        let b: Vec<_> = g.into_iter_indexes().collect();
+        assert_eq!(a, b);
+        assert_eq!(a.len(), 3);
+        assert_eq!(g.indexes(), &g.indexes); // accessor returns interior ref.
+    }
+
+    #[test]
+    fn get_at_xy_and_coord_match_index_lookup() {
+        let groups = CellGroups::default()
+            .with_default_sudoku_blocks()
+            .with_default_rows_and_columns();
+
+        let by_xy = groups
+            .get_at_xy(3, 4, CollectIndexes::IncludeSelf)
+            .expect("populated");
+        let by_coord = groups
+            .get_at_coord(Coordinate::new(3, 4), CollectIndexes::IncludeSelf)
+            .expect("populated");
+        assert_eq!(by_xy, by_coord);
+        assert!(by_xy.contains(Coordinate::new(3, 4).into_index()));
+
+        let without_self = groups
+            .get_at_xy(3, 4, CollectIndexes::ExcludeSelf)
+            .expect("populated");
+        assert!(!without_self.contains(Coordinate::new(3, 4).into_index()));
+    }
+
+    #[test]
+    fn get_peers_at_index_empty_returns_no_matching_group() {
+        let groups = CellGroups::default();
+        assert!(groups
+            .get_peers_at_index(Index::new(0), CollectIndexes::IncludeSelf)
+            .is_err());
+
+        // Group of a single index: ExcludeSelf empties the set and must error.
+        let lonely = CellGroup::default().with_index(Index::new(0));
+        let groups = CellGroups::default().with_group(lonely);
+        assert!(groups
+            .get_peers_at_index(Index::new(0), CollectIndexes::ExcludeSelf)
+            .is_err());
+    }
+
+    #[test]
+    fn get_groups_at_index_empty_returns_no_matching_group() {
+        let groups = CellGroups::default();
+        assert!(groups.get_groups_at_index(Index::new(0)).is_err());
+        assert!(groups.get_groups_at_coord(Coordinate::new(0, 0)).is_err());
+        assert!(groups.get_groups_at_xy(0, 0).is_err());
+    }
+
+    #[test]
+    fn with_group_from_iter_accepts_indexes_and_u8s() {
+        let groups = CellGroups::default()
+            .with_group_from_iter([Index::new(0), Index::new(1)])
+            .with_group_from_iter([2u8, 3u8]);
+        assert_eq!(groups.iter().count(), 2);
+    }
+
+    #[test]
+    fn cell_group_type_debug_covers_all_variants() {
+        assert_eq!(format!("{:?}", CellGroupType::Custom), "custom group");
+        assert_eq!(
+            format!("{:?}", CellGroupType::StandardBlock),
+            "standard block"
+        );
+        assert_eq!(
+            format!("{:?}", CellGroupType::StandardColumn),
+            "standard column"
+        );
+        assert_eq!(format!("{:?}", CellGroupType::StandardRow), "standard row");
+    }
 }

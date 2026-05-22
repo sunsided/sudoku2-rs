@@ -92,3 +92,57 @@ impl Strategy for NakedSingles {
         unimplemented!("This strategy is not group aware")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::example_games::sudoku::example_sudoku;
+    use crate::value::Value;
+
+    #[test]
+    fn debug_label_matches() {
+        assert_eq!(format!("{:?}", NakedSingles::default()), "Naked singles");
+    }
+
+    #[test]
+    fn always_continue_is_true() {
+        assert!(NakedSingles::default().always_continue());
+    }
+
+    #[test]
+    #[should_panic(expected = "not group aware")]
+    fn apply_in_group_panics() {
+        let game = example_sudoku();
+        let stats = BoardStatsCache::new(&game.initial_state);
+        let _ = NakedSingles::default().apply_in_group(
+            &game.initial_state,
+            &game.groups,
+            &stats,
+            CellGroupType::StandardRow,
+        );
+    }
+
+    #[test]
+    fn apply_removes_solved_value_from_peers() {
+        // Build a tiny board: only cell (0,0) is solved with value 1.
+        // The naked single must wipe candidate 1 from the rest of row 0.
+        let state = GameState::new();
+        state.set_at_xy(0, 0, Value::ONE);
+        let groups = CellGroups::default().with_default_rows_and_columns();
+        let stats = BoardStatsCache::new(&state);
+
+        let result = NakedSingles::default()
+            .apply(&state, &groups, &stats)
+            .expect("apply should not invalidate");
+        assert_eq!(result, StrategyResult::AppliedChange);
+
+        // Re-applying must be a no-op now.
+        let again = NakedSingles::default()
+            .apply(&state, &groups, &stats)
+            .expect("apply should not invalidate");
+        assert_eq!(again, StrategyResult::NoChange);
+
+        // Peer (1,0) should no longer hold candidate 1.
+        assert!(!state.get_at_xy(1, 0).contains(Value::ONE));
+    }
+}

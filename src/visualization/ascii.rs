@@ -211,3 +211,39 @@ pub fn print_cell_groups(groups: &CellGroups) {
     println!();
     std::io::stdout().flush().unwrap();
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::example_games::sudoku::example_sudoku;
+    use crate::DefaultSolver;
+
+    #[test]
+    fn print_game_state_runs_for_initial_board() {
+        let game = example_sudoku();
+        // Exercises the trait impl and the free function path.
+        game.print_game_state();
+        print_game_state(&game.initial_state);
+    }
+
+    #[test]
+    fn print_cell_groups_runs_for_default_groups() {
+        let game = example_sudoku();
+        game.print_cell_groups();
+        print_cell_groups(&game.groups);
+    }
+
+    #[test]
+    fn print_solution_runs_for_unsolved_and_solved_states() {
+        let game = example_sudoku();
+        // Unsolved state hits the `?` branch for every cell.
+        print_solution(&game.initial_state);
+
+        let solver = DefaultSolver::new(&game.groups);
+        let solved = solver
+            .solve(&game.initial_state)
+            .expect("example sudoku should be solvable");
+        // Solved state hits the `cell.is_solved()` branch.
+        print_solution(&solved);
+    }
+}
