@@ -8,9 +8,13 @@ Unlike the previous experiment, this solver correctly solves Hypersudokus and re
 Internally, value candidates and indexes are encoded via 16- and 128-bit bitsets ([ValueBitSet], [IndexBitSet]),
 reducing the overhead for constructing and testing hashsets.
 
-Currently implemented strategies are [Naked Singles], [Hidden Singles], [Naked Twins], [Hidden Twins] and [X-Wings].
+Currently implemented strategies are [Naked Singles], [Hidden Singles], [Naked Twins], [Hidden Twins],
+[Naked Triples], [Hidden Triples], [Naked Quads], [Hidden Quads], [H-Pattern], [Skyscraper], [X-Wings],
+[XY-Wing] and [W-Wing].
 Each additional strategy comes with its own overhead and most of the time, simply running a trial-and-error
 branching strategy performs best in terms of wall clock time.
+
+[Naked Quads] and [Hidden Quads] are **opt-in and disabled by default**.
 
 The [Unique Rectangle] strategy (Type 1) is also available, but is **opt-in and disabled by default**.
 It relies on the assumption that the puzzle has exactly one solution; running it on a board with multiple
@@ -25,7 +29,15 @@ example binary.
 [Hidden Singles]: src/strategies/hidden_singles.rs
 [Naked Twins]: src/strategies/naked_twins.rs
 [Hidden Twins]: src/strategies/hidden_twins.rs
+[Naked Triples]: src/strategies/naked_triples.rs
+[Hidden Triples]: src/strategies/hidden_triples.rs
+[Naked Quads]: src/strategies/naked_quads.rs
+[Hidden Quads]: src/strategies/hidden_quads.rs
+[H-Pattern]: src/strategies/h_pattern.rs
+[Skyscraper]: src/strategies/skyscraper.rs
 [X-Wings]: src/strategies/xwing.rs
+[XY-Wing]: src/strategies/xy_wing.rs
+[W-Wing]: src/strategies/w_wing.rs
 [Unique Rectangle]: src/strategies/unique_rectangle.rs
 
 To show the available options for the example, execute:
