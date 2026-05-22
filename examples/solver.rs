@@ -19,6 +19,8 @@ fn main() {
         example_games::sudoku_xwings::example_sudoku()
     } else if matches.get_flag("normal-skyscraper") {
         example_games::sudoku_skyscraper::example_sudoku()
+    } else if matches.get_flag("normal-xy-wing") {
+        example_games::sudoku_xy_wing::example_sudoku()
     } else if matches.get_flag("normal-hardest") {
         example_games::sudoku2::example_sudoku_hardest()
     } else if matches.get_flag("nonomino") {
@@ -38,6 +40,7 @@ fn main() {
         h_pattern: matches.get_flag("use-h-pattern"),
         skyscraper: matches.get_flag("use-skyscraper"),
         xwings: matches.get_flag("use-xwings"),
+        xy_wing: matches.get_flag("use-xy-wing"),
     };
 
     println!("Strategies:");
@@ -50,6 +53,7 @@ fn main() {
     println!("  H-Pattern:      {}", state_str(options.h_pattern));
     println!("  Skyscraper:     {}", state_str(options.skyscraper));
     println!("  X-Wings:        {}", state_str(options.xwings));
+    println!("  XY-Wing:        {}", state_str(options.xy_wing));
 
     println!("Cell groups:");
     game.print_cell_groups();
@@ -137,6 +141,14 @@ pub fn build_command() -> Command {
                 .group("type"),
         )
         .arg(
+            Arg::new("normal-xy-wing")
+                .long("sudoku-xy-wing")
+                .help("Solve a board seeded with a known XY-Wing pattern")
+                .action(clap::ArgAction::SetTrue)
+                .help_heading("Game type")
+                .group("type"),
+        )
+        .arg(
             Arg::new("normal-hardest")
                 .long("sudoku-hardest")
                 .help("Solve a Sudoku of \"hardest\" difficulty")
@@ -214,6 +226,13 @@ pub fn build_command() -> Command {
             Arg::new("use-xwings")
                 .long("no-xwings")
                 .help("Disables the X-Wings strategy")
+                .action(clap::ArgAction::SetFalse)
+                .help_heading("Strategy"),
+        )
+        .arg(
+            Arg::new("use-xy-wing")
+                .long("no-xy-wing")
+                .help("Disables the XY-Wing strategy")
                 .action(clap::ArgAction::SetFalse)
                 .help_heading("Strategy"),
         )
