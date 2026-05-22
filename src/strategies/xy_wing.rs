@@ -69,11 +69,9 @@ impl Strategy for XYWing {
         for (pivot_pos, pivot) in bivalues.iter().enumerate() {
             // Pincers must see the pivot. Take the union of peer indexes over
             // every group type the pivot participates in.
-            let pivot_peers =
-                match groups.get_peers_at_index(pivot.index, CollectIndexes::ExcludeSelf) {
-                    Ok(peers) => peers,
-                    Err(_) => continue,
-                };
+            let pivot_peers = groups
+                .get_peers_at_index(pivot.index, CollectIndexes::ExcludeSelf)
+                .expect("group missing for pivot cell");
 
             // Restrict to bivalue peers, sorted by their position in the
             // `bivalues` vector so we can deduplicate pairs with `i < j`.
@@ -153,16 +151,12 @@ impl Strategy for XYWing {
 
         let mut applied_some = false;
         for hit in hits {
-            let peers_a = match groups.get_peers_at_index(hit.pincer_a, CollectIndexes::ExcludeSelf)
-            {
-                Ok(p) => p,
-                Err(_) => continue,
-            };
-            let peers_b = match groups.get_peers_at_index(hit.pincer_b, CollectIndexes::ExcludeSelf)
-            {
-                Ok(p) => p,
-                Err(_) => continue,
-            };
+            let peers_a = groups
+                .get_peers_at_index(hit.pincer_a, CollectIndexes::ExcludeSelf)
+                .expect("group missing for pincer cell");
+            let peers_b = groups
+                .get_peers_at_index(hit.pincer_b, CollectIndexes::ExcludeSelf)
+                .expect("group missing for pincer cell");
 
             // Cells that see both pincers, minus the pivot. The pincers
             // themselves are already excluded by each peer set's `ExcludeSelf`.

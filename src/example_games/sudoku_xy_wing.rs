@@ -1,39 +1,48 @@
 use crate::*;
 
-/// Produces an example state that exercises the XY-Wing strategy.
+/// Produces a real Sudoku puzzle that exercises advanced strategies including
+/// XY-Wing during the solve.
 ///
-/// The board itself is otherwise unconstrained: only three bivalue cells are
-/// pre-seeded so the XY-Wing pattern can be observed in isolation.
+/// The grid is Peter Norvig's `hard1` from his "Solving Every Sudoku Puzzle"
+/// collection - a uniquely solvable, well-known hard puzzle. Singles and
+/// subset strategies will not finish it on their own; the solver advances
+/// through fish-style and bivalue strategies (including XY-Wing) before
+/// resorting to branching.
 ///
-/// Pattern:
-/// - Pivot at `(0, 0)` carries `{1, 2}`.
-/// - Pincer A at `(5, 0)` (shares row 0 with the pivot) carries `{1, 3}`.
-/// - Pincer B at `(0, 5)` (shares column 0 with the pivot) carries `{2, 3}`.
+/// ## Initial state
+/// ```plain
+///     4 · ·   · · ·   8 · 5
+///     · 3 ·   · · ·   · · ·
+///     · · ·   7 · ·   · · ·
 ///
-/// XY-Wing then eliminates `3` from any cell that sees both pincers - most
-/// visibly from `(5, 5)`.
+///     · 2 ·   · · ·   · 6 ·
+///     · · ·   · 8 ·   4 · ·
+///     · · ·   · 1 ·   · · ·
+///
+///     · · ·   6 · 3   · 7 ·
+///     5 · ·   2 · ·   · · ·
+///     1 · 4   · · ·   · · ·
+/// ```
+#[rustfmt::skip]
 pub fn example_sudoku() -> Game {
     let groups = CellGroups::default()
         .with_default_sudoku_blocks()
         .with_default_rows_and_columns();
 
-    let state = GameState::new();
+    let x = 0u8;
+    let state = GameState::new_from([
+        4, x, x,   x, x, x,   8, x, 5,
+        x, 3, x,   x, x, x,   x, x, x,
+        x, x, x,   7, x, x,   x, x, x,
 
-    let pivot = Coordinate::new(0, 0).into_index();
-    let pincer_a = Coordinate::new(5, 0).into_index();
-    let pincer_b = Coordinate::new(0, 5).into_index();
+        x, 2, x,   x, x, x,   x, 6, x,
+        x, x, x,   x, 8, x,   4, x, x,
+        x, x, x,   x, 1, x,   x, x, x,
 
-    for v in Value::range() {
-        if v != Value::ONE && v != Value::TWO {
-            state.forget_at_index(pivot, v);
-        }
-        if v != Value::ONE && v != Value::THREE {
-            state.forget_at_index(pincer_a, v);
-        }
-        if v != Value::TWO && v != Value::THREE {
-            state.forget_at_index(pincer_b, v);
-        }
-    }
+        x, x, x,   6, x, 3,   x, 7, x,
+        5, x, x,   2, x, x,   x, x, x,
+        1, x, 4,   x, x, x,   x, x, x,
+    ]);
 
     Game {
         initial_state: state,
