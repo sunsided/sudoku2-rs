@@ -6,6 +6,7 @@ mod naked_singles;
 mod naked_triples;
 mod naked_twins;
 mod skyscraper;
+mod w_wing;
 mod xwing;
 mod xy_wing;
 
@@ -22,6 +23,7 @@ pub use naked_singles::NakedSingles;
 pub use naked_triples::NakedTriples;
 pub use naked_twins::NakedTwins;
 pub use skyscraper::Skyscraper;
+pub use w_wing::WWing;
 pub use xwing::XWing;
 pub use xy_wing::XYWing;
 

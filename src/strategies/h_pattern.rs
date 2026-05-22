@@ -442,6 +442,7 @@ mod tests {
             skyscraper: true,
             xwings: true,
             xy_wing: true,
+            w_wing: true,
         };
         let solver = DefaultSolver::new_with(&game.groups, &config_no_h);
         let solution = solver
