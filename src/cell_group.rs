@@ -28,10 +28,24 @@ type GroupVec = smallvec::SmallVec<[CellGroup; 9]>;
 type GroupVec = Vec<CellGroup>;
 
 /// The set of all cell groups relevant to a game.
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct CellGroups {
     groups: GroupVec,
     groups_tagged: [GroupVec; 4],
+    /// Per-index union of all groups containing that index, *including* the
+    /// index itself. Maintained incrementally in [`Self::add_group`] so
+    /// [`Self::get_peers_at_index`] can return a peer set in O(1).
+    peers_with_self: Box<[IndexBitSet; 81]>,
+}
+
+impl Default for CellGroups {
+    fn default() -> Self {
+        Self {
+            groups: GroupVec::default(),
+            groups_tagged: Default::default(),
+            peers_with_self: Box::new([IndexBitSet::empty(); 81]),
+        }
+    }
 }
 
 impl AsRef<CellGroups> for &CellGroups {
@@ -50,6 +64,14 @@ impl CellGroups {
         if group.id.is_none() {
             let ids = self.get_highest_id();
             group.id = Some(ids + 1);
+        }
+
+        // Extend the peer cache: every member of the new group gains the
+        // group's full index set as part of its peer union.
+        let group_indexes = group.indexes;
+        for index in group_indexes.iter() {
+            let slot = &mut self.peers_with_self[*index as usize];
+            *slot = slot.with_union(&group_indexes);
         }
 
         self.groups.push(group.clone());
@@ -168,23 +190,17 @@ impl CellGroups {
         index: Index,
         mode: CollectIndexes,
     ) -> Result<IndexBitSet, NoMatchingGroup> {
-        let mut set = IndexBitSet::empty();
-        for group in self.groups.iter().filter(|&g| g.contains(index)) {
-            set.union(&group.indexes);
-        }
-
-        match mode {
-            CollectIndexes::IncludeSelf => { /* intentionally left empty */ }
-            CollectIndexes::ExcludeSelf => {
-                set.remove(index);
-            }
-        };
-
+        let mut set = self.peers_with_self[*index as usize];
         if set.is_empty() {
-            Err(NoMatchingGroup {})
-        } else {
-            Ok(set)
+            return Err(NoMatchingGroup {});
         }
+        if matches!(mode, CollectIndexes::ExcludeSelf) {
+            set.remove(index);
+            if set.is_empty() {
+                return Err(NoMatchingGroup {});
+            }
+        }
+        Ok(set)
     }
 
     #[inline]
