@@ -2,6 +2,7 @@ use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::Index;
 use crate::strategies::{Strategy, StrategyResult};
+use crate::value::Value;
 use log::debug;
 use std::fmt::{Debug, Formatter};
 
@@ -47,34 +48,55 @@ impl Strategy for HiddenSingles {
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut applied_some = false;
 
-        for index_under_test in Index::range() {
-            // Hidden singles "hide" behind more than one other
-            // possible value; we want to exclude impossible cells
-            // and those that are already solved.
-            let cell_under_test = state.get_at_index(index_under_test);
-            if cell_under_test.len() <= 1 {
-                continue;
+        for group in groups.iter().filter(|g| g.group_type == group_type) {
+            // Read each cell once and fan its candidates into per-value
+            // position arrays. A hidden single is any value that appears in
+            // exactly one unsolved cell of the group AND is not already
+            // resolved in some other cell of the group.
+            //
+            // Solved cells must still contribute to `counts` (otherwise a
+            // value resolved in cell C looks "absent" from the group, and a
+            // not-yet-propagated candidate elsewhere could be misread as the
+            // unique home for that digit). They never become a placement
+            // target, so `single_index` is only set from unsolved cells.
+            //
+            // The previous shape walked every cell of the group from the
+            // perspective of `Index::range()` and re-scanned peers per cell;
+            // this inversion cuts the cell-reads-per-group from ~9*8 to 9 and
+            // exposes the same answer directly.
+            let mut single_index: [Option<Index>; 9] = [None; 9];
+            let mut counts: [u8; 9] = [0; 9];
+            for i in group.iter_indexes() {
+                let cell = state.get_at_index(i);
+                let solved = cell.len() == 1;
+                for value in cell.to_bitset().iter() {
+                    let v_idx = (value.get() - 1) as usize;
+                    if !solved && single_index[v_idx].is_none() {
+                        single_index[v_idx] = Some(i);
+                    }
+                    counts[v_idx] = counts[v_idx].saturating_add(1);
+                }
             }
 
-            // By taking the intersection with each peer, we will isolate
-            // values that appear only in this cell and nowhere else.
-            let mut values = cell_under_test.to_bitset();
-
-            // Find all peers candidates.
-            for index in groups
-                .get_peer_indexes(index_under_test, group_type)
-                .filter(|&i| i != index_under_test)
-            {
-                debug_assert_ne!(index, index_under_test);
-                values.remove_many(state.get_at_index(index).to_bitset());
-            }
-
-            if let Some(value) = values.as_single_value() {
-                if state.place_and_propagate_at_index(index_under_test, value, groups) {
+            // Apply each value whose unsolved footprint is exactly one cell.
+            // Placements propagate, but distinct singles inside the same
+            // group must live in distinct cells (otherwise the cell would be
+            // over-constrained and the board inconsistent), so collected hits
+            // never collide.
+            for (v_idx, value) in Value::range().enumerate() {
+                if counts[v_idx] != 1 {
+                    continue;
+                }
+                let Some(index) = single_index[v_idx] else {
+                    // The lone contributor was a solved cell - the value is
+                    // already placed, no work to do.
+                    continue;
+                };
+                if state.place_and_propagate_at_index(index, value, groups) {
                     debug!(
                         "Applied Hidden Single {value:?} at {iut:?}",
                         value = value,
-                        iut = index_under_test
+                        iut = index
                     );
                     applied_some = true;
                 }
