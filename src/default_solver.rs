@@ -1,3 +1,4 @@
+use crate::board_stats::BoardStatsCache;
 use crate::cell_group::{CellGroups, CollectIndexes};
 use crate::game_state::InvalidGameState;
 use crate::index::Index;
@@ -204,9 +205,16 @@ impl DefaultSolver {
 
     /// Applies different strategies for solving the board without branching.
     fn apply_strategies(&self, state: &GameState) -> Result<(), InvalidGameState> {
+        // Lazy cache for board-wide stats. The first heavy strategy that
+        // needs them triggers the build; cheap strategies (NakedSingles,
+        // HiddenSingles, the Hidden/Naked subset families) never touch it,
+        // so simple puzzles pay no overhead at all. We invalidate the cache
+        // whenever a strategy mutates state.
+        let stats = BoardStatsCache::new(state);
+
         'solving: loop {
             'next_strategy: for strategy in self.strategies.iter().filter(|&s| s.is_enabled()) {
-                match strategy.apply(state, &self.groups) {
+                match strategy.apply(state, &self.groups, &stats) {
                     Err(e) => return Err(e),
                     Ok(outcome) => {
                         #[cfg(debug_assertions)]
@@ -220,8 +228,13 @@ impl DefaultSolver {
                             }
                         }
 
-                        // Some strategies do not require a restart.
+                        // Some strategies (NakedSingles) keep walking the
+                        // pipeline even after mutating state. Drop any cached
+                        // stats so the next consumer rebuilds them.
                         if strategy.always_continue() {
+                            if matches!(outcome, StrategyResult::AppliedChange) {
+                                stats.invalidate();
+                            }
                             continue 'next_strategy;
                         }
 
@@ -230,7 +243,10 @@ impl DefaultSolver {
                         // fastest gains. Because of that, when changes were applied
                         // we start over until all strategies report no change.
                         match outcome {
-                            StrategyResult::AppliedChange => continue 'solving,
+                            StrategyResult::AppliedChange => {
+                                stats.invalidate();
+                                continue 'solving;
+                            }
                             StrategyResult::NoChange => continue 'next_strategy,
                         }
                     }

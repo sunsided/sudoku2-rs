@@ -1,6 +1,7 @@
+use crate::board_stats::BoardStatsCache;
 use crate::cell_group::{CellGroupType, CellGroups, CollectIndexes};
 use crate::game_state::{GameState, InvalidGameState};
-use crate::index::{Index, IndexBitSet};
+use crate::index::Index;
 use crate::strategies::{Strategy, StrategyResult};
 use crate::{Coordinate, Value};
 use log::{debug, trace};
@@ -48,28 +49,15 @@ impl Strategy for Skyscraper {
         &self,
         state: &GameState,
         groups: &CellGroups,
+        stats: &BoardStatsCache,
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut hits: Vec<SkyscraperHit> = Vec::default();
 
-        // Build per-value candidate-position bitsets in a single pass over the
-        // board, instead of re-iterating every cell once per value. Solved
-        // cells contribute nothing - the Skyscraper search requires unsolved
-        // candidates on both lines.
-        let mut per_value: [IndexBitSet; 9] = Default::default();
-        for cell in state.iter_indexed() {
-            if cell.is_solved() {
-                continue;
-            }
-            let bits = cell.to_bitset();
-            for value in bits.iter() {
-                let v_idx = (value.get() - 1) as usize;
-                per_value[v_idx].insert(cell.index);
-            }
-        }
-
+        // Per-value candidate positions are built lazily on first access.
+        let stats_ref = stats.get();
         for value in Value::range() {
             let v_idx = (value.get() - 1) as usize;
-            let indexes = per_value[v_idx];
+            let indexes = stats_ref.per_value_unsolved[v_idx];
 
             // A Skyscraper needs four candidate cells across two lines.
             if indexes.len() < 4 {
@@ -178,6 +166,7 @@ impl Strategy for Skyscraper {
         &self,
         _state: &GameState,
         _groups: &CellGroups,
+        _stats: &BoardStatsCache,
         _group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
         unimplemented!("This strategy is not group aware")
@@ -309,7 +298,9 @@ mod tests {
         }
 
         let strat = Skyscraper { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::AppliedChange);
 
         // Both roof-seeing cells must have lost 7 as a candidate.
@@ -337,7 +328,9 @@ mod tests {
         }
 
         let strat = Skyscraper { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::AppliedChange);
 
         assert!(!state.get_at_xy(4, 3).contains(Value::SEVEN));
@@ -370,7 +363,9 @@ mod tests {
         // remaining rows untouched (each still has 9 candidates of 7).
 
         let strat = Skyscraper { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }
 
@@ -380,7 +375,9 @@ mod tests {
         let state = GameState::new();
 
         let strat = Skyscraper { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }
 }

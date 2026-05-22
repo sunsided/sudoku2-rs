@@ -1,3 +1,4 @@
+use crate::board_stats::BoardStatsCache;
 use crate::cell_group::{CellGroupType, CellGroups, CollectIndexes};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::{Index, IndexBitSet};
@@ -37,6 +38,7 @@ impl Strategy for NakedSingles {
         &self,
         state: &GameState,
         groups: &CellGroups,
+        _stats: &BoardStatsCache,
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut observed_singles = IndexBitSet::empty();
         let mut removed_some = false;
@@ -84,6 +86,7 @@ impl Strategy for NakedSingles {
         &self,
         _state: &GameState,
         _groups: &CellGroups,
+        _stats: &BoardStatsCache,
         _group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
         unimplemented!("This strategy is not group aware")

@@ -1,6 +1,7 @@
+use crate::board_stats::BoardStatsCache;
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
-use crate::index::{Index, IndexBitSet};
+use crate::index::Index;
 use crate::strategies::{Strategy, StrategyResult};
 use crate::{Coordinate, Value};
 use log::{debug, trace};
@@ -36,26 +37,18 @@ impl Strategy for XWing {
         &self,
         state: &GameState,
         groups: &CellGroups,
+        stats: &BoardStatsCache,
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut xwings: Vec<XWingCoords> = Vec::default();
 
-        // Build per-value candidate-position bitsets in a single pass over
-        // the board, instead of re-iterating every cell once per value.
-        let mut per_value: [IndexBitSet; 9] = Default::default();
-        for cell in state.iter_indexed() {
-            if cell.is_solved() {
-                continue;
-            }
-            let bits = cell.to_bitset();
-            for value in bits.iter() {
-                let v_idx = (value.get() - 1) as usize;
-                per_value[v_idx].insert(cell.index);
-            }
-        }
+        // Per-value candidate positions are computed lazily by the shared
+        // cache. The first heavy strategy to call `get()` in this pipeline
+        // pass builds them, the rest read for free.
+        let stats_ref = stats.get();
 
         for value in Value::range() {
             let v_idx = (value.get() - 1) as usize;
-            let indexes = per_value[v_idx];
+            let indexes = stats_ref.per_value_unsolved[v_idx];
 
             // For the X-Wing to work, we need at least four matching cells
             // in order to form a single rectangle.
@@ -171,6 +164,7 @@ impl Strategy for XWing {
         &self,
         _state: &GameState,
         _groups: &CellGroups,
+        _stats: &BoardStatsCache,
         _group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
         unimplemented!("This strategy is not group aware")
