@@ -1,6 +1,6 @@
 use crate::cell_group::{CellGroupType, CellGroups, CollectIndexes};
 use crate::game_state::{GameState, InvalidGameState};
-use crate::index::Index;
+use crate::index::{Index, IndexBitSet};
 use crate::strategies::{Strategy, StrategyResult};
 use crate::value::{Value, ValueBitSet};
 use log::{debug, trace};
@@ -68,13 +68,16 @@ impl Strategy for WWing {
             return Ok(StrategyResult::NoChange);
         }
 
-        // Enumerate the strong links on each candidate value. A strong link is
-        // a group in which `value` is a candidate in exactly two unsolved
-        // cells. Solved cells are skipped: in a propagated state they should
-        // have removed `value` from all peers in the group, so counting them
-        // would produce spurious strong links if propagation is incomplete.
-        let mut strong_links: Vec<StrongLink> = Vec::with_capacity(32);
+        // Enumerate the strong links on each candidate value, bucketed by the
+        // value index for O(1) lookup during the pair scan. A strong link is a
+        // group in which `value` is a candidate in exactly two unsolved cells.
+        // Solved cells are skipped: in a propagated state they should have
+        // removed `value` from all peers in the group, so counting them would
+        // produce spurious strong links if propagation is incomplete.
+        let mut strong_links_by_value: [Vec<StrongLink>; 9] = Default::default();
+        let mut any_strong_link = false;
         for value in Value::range() {
+            let bucket = &mut strong_links_by_value[(value.get() - 1) as usize];
             for group in groups.iter() {
                 let mut endpoints = [Index::default(); 2];
                 let mut count = 0usize;
@@ -91,27 +94,37 @@ impl Strategy for WWing {
                     }
                 }
                 if count == 2 {
-                    strong_links.push(StrongLink {
-                        value,
+                    bucket.push(StrongLink {
                         a: endpoints[0],
                         b: endpoints[1],
                     });
+                    any_strong_link = true;
                 }
             }
         }
 
-        if strong_links.is_empty() {
+        if !any_strong_link {
             return Ok(StrategyResult::NoChange);
         }
+
+        // Precompute peer sets for every bivalue cell once. The pair loop
+        // touches the same `biv_b.index` from many outer iterations; without
+        // caching, `get_peers_at_index` re-scans every group per visit.
+        let bivalue_peers: Vec<IndexBitSet> = bivalues
+            .iter()
+            .map(|b| {
+                groups
+                    .get_peers_at_index(b.index, CollectIndexes::ExcludeSelf)
+                    .expect("group missing for bivalue cell")
+            })
+            .collect();
 
         let mut hits: Vec<WWingHit> = Vec::default();
 
         for (i, biv_a) in bivalues.iter().enumerate() {
-            let peers_a = groups
-                .get_peers_at_index(biv_a.index, CollectIndexes::ExcludeSelf)
-                .expect("group missing for bivalue cell");
+            let peers_a = &bivalue_peers[i];
 
-            for biv_b in bivalues.iter().skip(i + 1) {
+            for (offset, biv_b) in bivalues.iter().enumerate().skip(i + 1) {
                 // The two bivalue cells must share the same candidate pair.
                 if biv_a.values != biv_b.values {
                     continue;
@@ -123,14 +136,17 @@ impl Strategy for WWing {
                     continue;
                 }
 
-                let peers_b = groups
-                    .get_peers_at_index(biv_b.index, CollectIndexes::ExcludeSelf)
-                    .expect("group missing for bivalue cell");
+                let peers_b = &bivalue_peers[offset];
 
                 for &x in &[
                     biv_a.values.iter().next().unwrap(),
                     biv_a.values.iter().nth(1).unwrap(),
                 ] {
+                    let links = &strong_links_by_value[(x.get() - 1) as usize];
+                    if links.is_empty() {
+                        continue;
+                    }
+
                     // `y` is the other candidate, to be eliminated.
                     let mut y_bits = biv_a.values;
                     y_bits.remove(x);
@@ -139,7 +155,7 @@ impl Strategy for WWing {
                         None => continue,
                     };
 
-                    for link in strong_links.iter().filter(|l| l.value == x) {
+                    for link in links.iter() {
                         // Strong-link endpoints must be distinct from the
                         // bivalue cells. If one of them coincides, the
                         // pattern degenerates and is covered elsewhere.
@@ -238,7 +254,6 @@ struct Bivalue {
 
 #[derive(Copy, Clone)]
 struct StrongLink {
-    value: Value,
     a: Index,
     b: Index,
 }
