@@ -3,8 +3,8 @@ use crate::game_state::InvalidGameState;
 use crate::index::Index;
 use crate::state_stack::{StateStack, StateStackEntry};
 use crate::strategies::{
-    HPattern, HiddenSingles, HiddenTriples, HiddenTwins, NakedSingles, NakedTriples, NakedTwins,
-    Skyscraper, Strategy, StrategyResult, WWing, XWing, XYWing,
+    HPattern, HiddenQuads, HiddenSingles, HiddenTriples, HiddenTwins, NakedQuads, NakedSingles,
+    NakedTriples, NakedTwins, Skyscraper, Strategy, StrategyResult, WWing, XWing, XYWing,
 };
 use crate::GameState;
 use log::{debug, trace};
@@ -42,6 +42,8 @@ pub struct DefaultSolverConfig {
     pub hidden_twins: bool,
     pub naked_triples: bool,
     pub hidden_triples: bool,
+    pub naked_quads: bool,
+    pub hidden_quads: bool,
     pub h_pattern: bool,
     pub skyscraper: bool,
     pub xwings: bool,
@@ -57,6 +59,10 @@ impl Default for DefaultSolverConfig {
             hidden_twins: true,
             naked_triples: true,
             hidden_triples: true,
+            // Quads scan cost outweighs the savings on the puzzles in the
+            // benchmark suite. Opt-in.
+            naked_quads: false,
+            hidden_quads: false,
             h_pattern: true,
             skyscraper: true,
             xwings: true,
@@ -79,6 +85,8 @@ impl DefaultSolver {
             HiddenTwins::new_box(config.hidden_twins),
             NakedTriples::new_box(config.naked_triples),
             HiddenTriples::new_box(config.hidden_triples),
+            NakedQuads::new_box(config.naked_quads),
+            HiddenQuads::new_box(config.hidden_quads),
             HPattern::new_box(config.h_pattern),
             Skyscraper::new_box(config.skyscraper),
             XWing::new_box(config.xwings),

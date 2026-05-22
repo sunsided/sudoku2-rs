@@ -39,6 +39,8 @@ fn main() {
         hidden_twins: matches.get_flag("use-hidden-twins"),
         naked_triples: matches.get_flag("use-naked-triples"),
         hidden_triples: matches.get_flag("use-hidden-triples"),
+        naked_quads: matches.get_flag("use-naked-quads"),
+        hidden_quads: matches.get_flag("use-hidden-quads"),
         h_pattern: matches.get_flag("use-h-pattern"),
         skyscraper: matches.get_flag("use-skyscraper"),
         xwings: matches.get_flag("use-xwings"),
@@ -53,6 +55,8 @@ fn main() {
     println!("  Hidden Twins:   {}", state_str(options.hidden_twins));
     println!("  Naked Triples:  {}", state_str(options.naked_triples));
     println!("  Hidden Triples: {}", state_str(options.hidden_triples));
+    println!("  Naked Quads:    {}", state_str(options.naked_quads));
+    println!("  Hidden Quads:   {}", state_str(options.hidden_quads));
     println!("  H-Pattern:      {}", state_str(options.h_pattern));
     println!("  Skyscraper:     {}", state_str(options.skyscraper));
     println!("  X-Wings:        {}", state_str(options.xwings));
@@ -218,6 +222,20 @@ pub fn build_command() -> Command {
                 .long("no-hidden-triples")
                 .help("Disables the Hidden Triples strategy")
                 .action(clap::ArgAction::SetFalse)
+                .help_heading("Strategy"),
+        )
+        .arg(
+            Arg::new("use-naked-quads")
+                .long("naked-quads")
+                .help("Enables the Naked Quads strategy (opt-in)")
+                .action(clap::ArgAction::SetTrue)
+                .help_heading("Strategy"),
+        )
+        .arg(
+            Arg::new("use-hidden-quads")
+                .long("hidden-quads")
+                .help("Enables the Hidden Quads strategy (opt-in)")
+                .action(clap::ArgAction::SetTrue)
                 .help_heading("Strategy"),
         )
         .arg(
