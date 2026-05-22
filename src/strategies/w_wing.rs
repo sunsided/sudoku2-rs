@@ -69,14 +69,18 @@ impl Strategy for WWing {
         }
 
         // Enumerate the strong links on each candidate value. A strong link is
-        // a group in which `value` is a candidate in exactly two cells.
+        // a group in which `value` is a candidate in exactly two unsolved
+        // cells. Solved cells are skipped: in a propagated state they should
+        // have removed `value` from all peers in the group, so counting them
+        // would produce spurious strong links if propagation is incomplete.
         let mut strong_links: Vec<StrongLink> = Vec::with_capacity(32);
         for value in Value::range() {
             for group in groups.iter() {
                 let mut endpoints = [Index::default(); 2];
                 let mut count = 0usize;
                 for index in group.iter_indexes() {
-                    if state.get_at_index(index).contains(value) {
+                    let cell = state.get_at_index(index);
+                    if !cell.is_solved() && cell.contains(value) {
                         if count < 2 {
                             endpoints[count] = index;
                         }
