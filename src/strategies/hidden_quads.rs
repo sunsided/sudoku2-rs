@@ -50,28 +50,34 @@ impl Strategy for HiddenQuads {
         let mut quads_to_apply: Vec<HiddenQuad> = Vec::default();
 
         for group in groups.iter().filter(|g| g.group_type == group_type) {
-            // For every value, collect the unsolved cells in this group where
-            // the value still appears as a candidate. A digit that fits in
-            // 1..=4 cells is eligible for a hidden quad - allowing 1-cell
-            // digits means we do not depend on `HiddenSingles` having run
-            // beforehand. Digits with more than four positions cannot be
-            // confined to a 4-cell cover.
-            let mut candidate_values: Vec<(Value, IndexBitSet)> = Vec::default();
-            for value in Value::range() {
-                let mut positions = IndexBitSet::empty();
-                let mut count = 0usize;
-                for i in group.iter_indexes() {
-                    let cell = state.get_at_index(i);
-                    if cell.len() <= 1 {
-                        continue;
-                    }
-                    if cell.to_bitset().contains(value) {
-                        positions.insert(i);
-                        count += 1;
-                    }
+            // Read each cell in the group once and fan its candidates out into
+            // per-value position sets. The earlier shape iterated values in the
+            // outer loop and re-read every cell nine times; this inversion cuts
+            // the cell-reads-per-group from 81 to 9 and reaches the same data.
+            //
+            // A digit that fits in 1..=4 cells is eligible for a hidden quad -
+            // allowing 1-cell digits means we do not depend on `HiddenSingles`
+            // having run beforehand. Digits with more than four positions
+            // cannot be confined to a 4-cell cover.
+            let mut positions: [IndexBitSet; 9] = Default::default();
+            let mut counts: [u8; 9] = [0; 9];
+            for i in group.iter_indexes() {
+                let cell = state.get_at_index(i);
+                if cell.len() <= 1 {
+                    continue;
                 }
+                for value in cell.to_bitset().iter() {
+                    let v_idx = (value.get() - 1) as usize;
+                    positions[v_idx].insert(i);
+                    counts[v_idx] += 1;
+                }
+            }
+
+            let mut candidate_values: Vec<(Value, IndexBitSet)> = Vec::with_capacity(9);
+            for (v_idx, value) in Value::range().enumerate() {
+                let count = counts[v_idx];
                 if (1..=4).contains(&count) {
-                    candidate_values.push((value, positions));
+                    candidate_values.push((value, positions[v_idx]));
                 }
             }
 

@@ -28,7 +28,7 @@ impl HiddenTwins {
 
 impl Debug for HiddenTwins {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Hidden singles")
+        write!(f, "Hidden twins")
     }
 }
 
