@@ -4,7 +4,8 @@ use crate::index::Index;
 use crate::state_stack::{StateStack, StateStackEntry};
 use crate::strategies::{
     HPattern, HiddenQuads, HiddenSingles, HiddenTriples, HiddenTwins, NakedQuads, NakedSingles,
-    NakedTriples, NakedTwins, Skyscraper, Strategy, StrategyResult, WWing, XWing, XYWing,
+    NakedTriples, NakedTwins, Skyscraper, Strategy, StrategyResult, UniqueRectangle, WWing, XWing,
+    XYWing,
 };
 use crate::GameState;
 use log::{debug, trace};
@@ -49,6 +50,10 @@ pub struct DefaultSolverConfig {
     pub xwings: bool,
     pub xy_wing: bool,
     pub w_wing: bool,
+    /// Unique Rectangle assumes the puzzle has a single solution. Disabled
+    /// by default because user-supplied or fuzz-generated puzzles may
+    /// violate uniqueness and silently corrupt the solver.
+    pub unique_rectangle: bool,
 }
 
 impl Default for DefaultSolverConfig {
@@ -68,6 +73,8 @@ impl Default for DefaultSolverConfig {
             xwings: true,
             xy_wing: true,
             w_wing: true,
+            // Opt-in: requires the puzzle to have exactly one solution.
+            unique_rectangle: false,
         }
     }
 }
@@ -92,6 +99,7 @@ impl DefaultSolver {
             XWing::new_box(config.xwings),
             XYWing::new_box(config.xy_wing),
             WWing::new_box(config.w_wing),
+            UniqueRectangle::new_box(config.unique_rectangle),
         ];
 
         Self {

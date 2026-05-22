@@ -60,6 +60,13 @@ tasks:
     cmds:
       - cargo test --workspace --doc
 
+  test:unique-rectangle:
+    desc: Run unit tests for the Unique Rectangle strategy
+    aliases:
+      - test:ur
+    cmds:
+      - cargo test --workspace --all-targets unique_rectangle
+
   doc:
     desc: Build rustdoc for the workspace
     cmds:
@@ -100,6 +107,7 @@ tasks:
       - task: example:sudoku-xy-wing
       - task: example:sudoku-w-wing
       - task: example:sudoku-hardest
+      - task: example:sudoku-unique-rectangle
       - task: example:nonomino
       - task: example:hyper
 
@@ -151,6 +159,18 @@ tasks:
       - run:sudoku-hardest
     cmds:
       - cargo run --release --example solver -- --sudoku-hardest {{.CLI_ARGS}}
+
+  example:sudoku-unique-rectangle:
+    desc: >-
+      Run the hardest Sudoku example with the opt-in Unique Rectangle (Type 1)
+      strategy enabled. Assumes a uniquely solvable puzzle - do not point at
+      multi-solution boards.
+    aliases:
+      - run:sudoku-unique-rectangle
+      - example:sudoku-ur
+      - run:sudoku-ur
+    cmds:
+      - cargo run --release --example solver -- --sudoku-hardest --unique-rectangle {{.CLI_ARGS}}
 
   example:nonomino:
     desc: Run Nonomino example
