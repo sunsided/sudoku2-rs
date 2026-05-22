@@ -46,6 +46,12 @@ impl Strategy for XWing {
         // pass builds them, the rest read for free.
         let stats_ref = stats.get();
 
+        // X-Wing requires at least four candidate cells sharing one value.
+        // Bail out before the value loop if no digit has that many candidates.
+        if stats_ref.max_per_value_unsolved() < 4 {
+            return Ok(StrategyResult::NoChange);
+        }
+
         for value in Value::range() {
             let v_idx = (value.get() - 1) as usize;
             let indexes = stats_ref.per_value_unsolved[v_idx];

@@ -55,6 +55,13 @@ impl Strategy for Skyscraper {
 
         // Per-value candidate positions are built lazily on first access.
         let stats_ref = stats.get();
+
+        // Skyscraper needs at least four candidate cells of one value across
+        // two lines. Without that, no pattern can exist.
+        if stats_ref.max_per_value_unsolved() < 4 {
+            return Ok(StrategyResult::NoChange);
+        }
+
         for value in Value::range() {
             let v_idx = (value.get() - 1) as usize;
             let indexes = stats_ref.per_value_unsolved[v_idx];

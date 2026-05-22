@@ -56,6 +56,19 @@ impl BoardStats {
             bivalues,
         }
     }
+
+    /// Maximum count of unsolved candidate positions across all values.
+    /// Strategies that need at least `n` candidate cells of *some* value
+    /// (X-Wing needs 4, Skyscraper needs 4, ...) can early-exit when this
+    /// drops below `n` without iterating values themselves.
+    #[inline]
+    pub fn max_per_value_unsolved(&self) -> u32 {
+        self.per_value_unsolved
+            .iter()
+            .map(|s| s.len() as u32)
+            .max()
+            .unwrap_or(0)
+    }
 }
 
 /// Lazy cache for `BoardStats`. The pipeline restart loop creates one cache
