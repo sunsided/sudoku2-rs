@@ -46,6 +46,7 @@ fn main() {
         xwings: matches.get_flag("use-xwings"),
         xy_wing: matches.get_flag("use-xy-wing"),
         w_wing: matches.get_flag("use-w-wing"),
+        unique_rectangle: matches.get_flag("use-unique-rectangle"),
     };
 
     println!("Strategies:");
@@ -62,6 +63,7 @@ fn main() {
     println!("  X-Wings:        {}", state_str(options.xwings));
     println!("  XY-Wing:        {}", state_str(options.xy_wing));
     println!("  W-Wing:         {}", state_str(options.w_wing));
+    println!("  Unique Rect.:   {}", state_str(options.unique_rectangle));
 
     println!("Cell groups:");
     game.print_cell_groups();
@@ -271,6 +273,16 @@ pub fn build_command() -> Command {
                 .long("no-w-wing")
                 .help("Disables the W-Wing strategy")
                 .action(clap::ArgAction::SetFalse)
+                .help_heading("Strategy"),
+        )
+        .arg(
+            Arg::new("use-unique-rectangle")
+                .long("unique-rectangle")
+                .help(
+                    "Enables the Unique Rectangle strategy (opt-in; \
+                     requires the puzzle to have exactly one solution)",
+                )
+                .action(clap::ArgAction::SetTrue)
                 .help_heading("Strategy"),
         )
 }

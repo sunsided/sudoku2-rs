@@ -12,6 +12,12 @@ Currently implemented strategies are [Naked Singles], [Hidden Singles], [Naked T
 Each additional strategy comes with its own overhead and most of the time, simply running a trial-and-error
 branching strategy performs best in terms of wall clock time.
 
+The [Unique Rectangle] strategy (Type 1) is also available, but is **opt-in and disabled by default**.
+It relies on the assumption that the puzzle has exactly one solution; running it on a board with multiple
+solutions (e.g. a user-supplied or fuzz-generated puzzle that has not been validated) can silently corrupt
+the solver. Enable it via `DefaultSolverConfig::unique_rectangle = true` or `--unique-rectangle` on the
+example binary.
+
 [ValueBitSet]: src/value.rs
 [IndexBitSet]: src/index.rs
 
@@ -20,6 +26,7 @@ branching strategy performs best in terms of wall clock time.
 [Naked Twins]: src/strategies/naked_twins.rs
 [Hidden Twins]: src/strategies/hidden_twins.rs
 [X-Wings]: src/strategies/xwing.rs
+[Unique Rectangle]: src/strategies/unique_rectangle.rs
 
 To show the available options for the example, execute:
 

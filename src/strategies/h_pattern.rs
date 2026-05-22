@@ -445,6 +445,7 @@ mod tests {
             xwings: true,
             xy_wing: true,
             w_wing: true,
+            unique_rectangle: false,
         };
         let solver = DefaultSolver::new_with(&game.groups, &config_no_h);
         let solution = solver
