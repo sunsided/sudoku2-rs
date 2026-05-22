@@ -1,6 +1,6 @@
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
-use crate::index::{Index, IndexBitSet};
+use crate::index::Index;
 use crate::strategies::{Strategy, StrategyResult};
 use crate::value::ValueBitSet;
 use log::{debug, trace};
@@ -45,78 +45,76 @@ impl Strategy for NakedTwins {
         groups: &CellGroups,
         group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
-        let mut twins_to_remove = Vec::default();
-        let mut observed_twins = IndexBitSet::empty();
+        let mut twins_to_remove: Vec<TwinPair> = Vec::default();
 
-        for cell_under_test in state.iter_indexed() {
-            if !observed_twins.try_insert(cell_under_test.index) {
-                continue;
-            }
-
-            // Only consider cells that have two possible candidates.
-            if cell_under_test.len() != 2 {
-                continue;
-            }
-
-            let mut possible_twins = Vec::default();
-
-            // Find all possible twin candidates.
-            for index in groups.get_peer_indexes(cell_under_test.index, group_type) {
-                if observed_twins.contains(index) {
-                    continue;
-                }
-
-                let cell = state.get_at_index(index);
+        for group in groups.iter().filter(|g| g.group_type == group_type) {
+            // Collect every bivalue cell in this group with its candidate set.
+            // Naked twins are two bivalue cells sharing the same candidate set
+            // - the inverted form of Hidden Twins' two values sharing the
+            // same 2-cell footprint.
+            let mut bivalues: [(Index, ValueBitSet); 9] = Default::default();
+            let mut bivalue_len = 0usize;
+            for i in group.iter_indexes() {
+                let cell = state.get_at_index(i);
                 if cell.len() != 2 {
                     continue;
                 }
-
-                if cell.to_bitset().eq(cell_under_test.as_bitset()) {
-                    possible_twins.push(cell.into_indexed(index));
-                }
+                bivalues[bivalue_len] = (i, cell.to_bitset());
+                bivalue_len += 1;
             }
 
-            // At least one other cell is required for a twin pair.
-            if possible_twins.is_empty() {
+            if bivalue_len < 2 {
                 continue;
             }
 
-            // More than two "twins" are an error.
-            if possible_twins.len() > 1 {
-                return Err(InvalidGameState {});
+            for (i, &(idx_a, bits_a)) in bivalues.iter().take(bivalue_len).enumerate() {
+                let mut partner: Option<Index> = None;
+                for &(idx_b, bits_b) in bivalues.iter().take(bivalue_len).skip(i + 1) {
+                    if bits_b != bits_a {
+                        continue;
+                    }
+                    if partner.is_some() {
+                        // Three cells in the same group sharing the same
+                        // bivalue pair is inconsistent: only two of them can
+                        // hold those two digits.
+                        return Err(InvalidGameState {});
+                    }
+                    partner = Some(idx_b);
+                }
+
+                let Some(idx_b) = partner else {
+                    continue;
+                };
+
+                let (smaller, larger) = if idx_a < idx_b {
+                    (idx_a, idx_b)
+                } else {
+                    (idx_b, idx_a)
+                };
+
+                trace!(
+                    "Identified Naked Twin pair in {group_type:?} at {a:?} and {b:?}: {values:?}",
+                    group_type = group_type,
+                    a = smaller,
+                    b = larger,
+                    values = bits_a
+                );
+                twins_to_remove.push(TwinPair {
+                    smaller,
+                    larger,
+                    values: bits_a,
+                });
             }
-
-            debug_assert_eq!(possible_twins.len(), 1);
-            let other_twin = possible_twins.first().unwrap();
-
-            // Eliminate twin values in other cells.
-            observed_twins
-                .insert(cell_under_test.index)
-                .insert(other_twin.index);
-
-            trace!(
-                "Identified Naked Twin pair in {group_type:?} at {a:?} and {b:?}: {values:?}",
-                group_type = group_type,
-                a = cell_under_test.index.min(other_twin.index),
-                b = cell_under_test.index.max(other_twin.index),
-                values = other_twin.to_bitset()
-            );
-            twins_to_remove.push(TwinPair {
-                smaller: cell_under_test.index.min(other_twin.index),
-                larger: cell_under_test.index.max(other_twin.index),
-                values: other_twin.to_bitset(),
-            });
         }
 
         if twins_to_remove.is_empty() {
             return Ok(StrategyResult::NoChange);
         }
 
-        // Iterate the detected twins, find their groups and eliminate the values.
         let mut applied_some = false;
-        for twin in twins_to_remove.into_iter() {
-            // The choice of the smaller or larger index here doesn't matter as they
-            // are in the same group.
+        for twin in twins_to_remove {
+            // Smaller or larger index doesn't matter - both belong to the
+            // same `group_type` peer set.
             let mut applied_twin = false;
             for index in groups
                 .get_peer_indexes(twin.smaller, group_type)

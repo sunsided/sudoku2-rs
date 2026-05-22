@@ -1,6 +1,6 @@
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
-use crate::index::{CollectIndexBitSet, Index};
+use crate::index::{Index, IndexBitSet};
 use crate::strategies::{Strategy, StrategyResult};
 use crate::{Coordinate, Value};
 use log::{debug, trace};
@@ -39,13 +39,23 @@ impl Strategy for XWing {
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut xwings: Vec<XWingCoords> = Vec::default();
 
+        // Build per-value candidate-position bitsets in a single pass over
+        // the board, instead of re-iterating every cell once per value.
+        let mut per_value: [IndexBitSet; 9] = Default::default();
+        for cell in state.iter_indexed() {
+            if cell.is_solved() {
+                continue;
+            }
+            let bits = cell.to_bitset();
+            for value in bits.iter() {
+                let v_idx = (value.get() - 1) as usize;
+                per_value[v_idx].insert(cell.index);
+            }
+        }
+
         for value in Value::range() {
-            // Identify all the cells that are not solved and contain the value under test.
-            let indexes = state
-                .iter_indexed()
-                .filter(|&cell| !cell.is_solved() && cell.contains(value))
-                .map(|cell| cell.index)
-                .collect_bitset();
+            let v_idx = (value.get() - 1) as usize;
+            let indexes = per_value[v_idx];
 
             // For the X-Wing to work, we need at least four matching cells
             // in order to form a single rectangle.

@@ -259,19 +259,6 @@ impl Iterator for IntoIndexBitSetIter {
     }
 }
 
-pub trait CollectIndexBitSet {
-    fn collect_bitset(self) -> IndexBitSet;
-}
-
-impl<T> CollectIndexBitSet for T
-where
-    T: IntoIterator<Item = Index>,
-{
-    fn collect_bitset(self) -> IndexBitSet {
-        IndexBitSet::from_iter(self)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::index::{Index, IndexBitSet};
