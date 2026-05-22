@@ -226,16 +226,16 @@ pub fn build_command() -> Command {
         )
         .arg(
             Arg::new("use-naked-quads")
-                .long("no-naked-quads")
-                .help("Disables the Naked Quads strategy")
-                .action(clap::ArgAction::SetFalse)
+                .long("naked-quads")
+                .help("Enables the Naked Quads strategy (opt-in)")
+                .action(clap::ArgAction::SetTrue)
                 .help_heading("Strategy"),
         )
         .arg(
             Arg::new("use-hidden-quads")
-                .long("no-hidden-quads")
-                .help("Disables the Hidden Quads strategy")
-                .action(clap::ArgAction::SetFalse)
+                .long("hidden-quads")
+                .help("Enables the Hidden Quads strategy (opt-in)")
+                .action(clap::ArgAction::SetTrue)
                 .help_heading("Strategy"),
         )
         .arg(
