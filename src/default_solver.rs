@@ -207,6 +207,13 @@ impl DefaultSolver {
     ///
     /// Passing `limit = 2` is sufficient to distinguish zero / one / many,
     /// which is what uniqueness checking needs during puzzle generation.
+    ///
+    /// # Warning
+    ///
+    /// Do not enable [`DefaultSolverConfig::unique_rectangle`] when using this
+    /// method. The `UniqueRectangle` strategy assumes the puzzle has exactly one
+    /// solution and will eliminate candidates that belong to valid alternative
+    /// solutions, producing an incorrect count. It is disabled by default.
     pub fn count_solutions<S: AsRef<GameState>>(&self, state: S, limit: usize) -> usize {
         if limit == 0 {
             return 0;
@@ -216,16 +223,15 @@ impl DefaultSolver {
         let mut stack = StateStack::new_with(state.as_ref().clone());
 
         'stack: while let Some(StateStackEntry { state, .. }) = stack.pop() {
-            if count >= limit {
-                break;
-            }
-
             if !state.is_consistent(&self.groups) {
                 continue;
             }
 
             if state.is_solved(&self.groups) {
                 count += 1;
+                if count >= limit {
+                    break;
+                }
                 continue;
             }
 
@@ -235,6 +241,9 @@ impl DefaultSolver {
 
             if state.is_solved(&self.groups) {
                 count += 1;
+                if count >= limit {
+                    break;
+                }
                 continue;
             }
 
@@ -249,7 +258,7 @@ impl DefaultSolver {
             let forked = state.clone();
             forked.place_and_propagate_at_index(fork_index, fork_value, &self.groups);
             state.forget_at_index(fork_index, fork_value);
-            stack.push(state.clone());
+            stack.push(state);
 
             if forked.is_consistent(&self.groups) {
                 stack.push(forked);
