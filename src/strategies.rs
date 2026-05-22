@@ -1,7 +1,9 @@
 mod h_pattern;
+mod hidden_quads;
 mod hidden_singles;
 mod hidden_triples;
 mod hidden_twins;
+mod naked_quads;
 mod naked_singles;
 mod naked_triples;
 mod naked_twins;
@@ -16,9 +18,11 @@ use std::fmt::Debug;
 use std::ops::{BitOr, BitOrAssign};
 
 pub use h_pattern::HPattern;
+pub use hidden_quads::HiddenQuads;
 pub use hidden_singles::HiddenSingles;
 pub use hidden_triples::HiddenTriples;
 pub use hidden_twins::HiddenTwins;
+pub use naked_quads::NakedQuads;
 pub use naked_singles::NakedSingles;
 pub use naked_triples::NakedTriples;
 pub use naked_twins::NakedTwins;

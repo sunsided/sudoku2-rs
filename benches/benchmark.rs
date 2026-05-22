@@ -9,6 +9,18 @@ fn criterion_benchmark(c: &mut Criterion) {
         c.bench_function("sudoku", |b| {
             b.iter(|| sudoku_solver.solve(black_box(&sudoku_game.initial_state)))
         });
+
+        let sudoku_solver = DefaultSolver::new_with(
+            &sudoku_game.groups,
+            &DefaultSolverConfig {
+                naked_quads: false,
+                hidden_quads: false,
+                ..Default::default()
+            },
+        );
+        c.bench_function("sudoku without Quads", |b| {
+            b.iter(|| sudoku_solver.solve(black_box(&sudoku_game.initial_state)))
+        });
     }
 
     {
@@ -40,6 +52,30 @@ fn criterion_benchmark(c: &mut Criterion) {
             },
         );
         c.bench_function("sudoku-hardest with Hidden Twins", |b| {
+            b.iter(|| sudoku_solver.solve(black_box(&sudoku_game.initial_state)))
+        });
+
+        let sudoku_solver = DefaultSolver::new_with(
+            &sudoku_game.groups,
+            &DefaultSolverConfig {
+                naked_quads: false,
+                hidden_quads: false,
+                ..Default::default()
+            },
+        );
+        c.bench_function("sudoku-hardest without Quads", |b| {
+            b.iter(|| sudoku_solver.solve(black_box(&sudoku_game.initial_state)))
+        });
+
+        let sudoku_solver = DefaultSolver::new_with(
+            &sudoku_game.groups,
+            &DefaultSolverConfig {
+                naked_quads: true,
+                hidden_quads: true,
+                ..Default::default()
+            },
+        );
+        c.bench_function("sudoku-hardest with Quads", |b| {
             b.iter(|| sudoku_solver.solve(black_box(&sudoku_game.initial_state)))
         });
     }

@@ -438,6 +438,8 @@ mod tests {
             hidden_twins: true,
             naked_triples: true,
             hidden_triples: true,
+            naked_quads: true,
+            hidden_quads: true,
             h_pattern: false,
             skyscraper: true,
             xwings: true,
