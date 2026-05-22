@@ -7,6 +7,7 @@ mod naked_triples;
 mod naked_twins;
 mod skyscraper;
 mod xwing;
+mod xy_wing;
 
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
@@ -22,6 +23,7 @@ pub use naked_triples::NakedTriples;
 pub use naked_twins::NakedTwins;
 pub use skyscraper::Skyscraper;
 pub use xwing::XWing;
+pub use xy_wing::XYWing;
 
 pub trait Strategy: Debug {
     /// Indicates whether this strategy is enabled.
