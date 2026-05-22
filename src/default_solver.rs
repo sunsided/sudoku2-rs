@@ -203,6 +203,67 @@ impl DefaultSolver {
         Err(Unsolvable(last_seen_state))
     }
 
+    /// Counts distinct solutions up to `limit`, then stops.
+    ///
+    /// Passing `limit = 2` is sufficient to distinguish zero / one / many,
+    /// which is what uniqueness checking needs during puzzle generation.
+    pub fn count_solutions<S: AsRef<GameState>>(&self, state: S, limit: usize) -> usize {
+        if limit == 0 {
+            return 0;
+        }
+
+        let mut count = 0usize;
+        let mut stack = StateStack::new_with(state.as_ref().clone());
+
+        'stack: while let Some(StateStackEntry { state, .. }) = stack.pop() {
+            if count >= limit {
+                break;
+            }
+
+            if !state.is_consistent(&self.groups) {
+                continue;
+            }
+
+            if state.is_solved(&self.groups) {
+                count += 1;
+                continue;
+            }
+
+            if self.apply_strategies(&state).is_err() {
+                continue 'stack;
+            }
+
+            if state.is_solved(&self.groups) {
+                count += 1;
+                continue;
+            }
+
+            let fork_index = match self.pick_index_to_fork_from(&state) {
+                Some(index) => index,
+                None => continue 'stack,
+            };
+
+            let fork_cell = state.get_at_index(fork_index);
+            let fork_value = fork_cell.iter_candidates().next().unwrap();
+
+            let forked = state.clone();
+            forked.place_and_propagate_at_index(fork_index, fork_value, &self.groups);
+            state.forget_at_index(fork_index, fork_value);
+            stack.push(state.clone());
+
+            if forked.is_consistent(&self.groups) {
+                stack.push(forked);
+            }
+        }
+
+        count
+    }
+
+    /// Returns `true` if `state` has exactly one solution.
+    pub fn is_unique<S: AsRef<GameState>>(&self, state: S) -> bool {
+        self.count_solutions(state, 2) == 1
+    }
+
     /// Applies different strategies for solving the board without branching.
     fn apply_strategies(&self, state: &GameState) -> Result<(), InvalidGameState> {
         // Lazy cache for board-wide stats. The first heavy strategy that
@@ -443,5 +504,128 @@ mod tests {
         let solution = result.unwrap();
         assert!(solution.is_consistent(&game.groups));
         assert!(solution.is_solved(&game.groups));
+    }
+
+    #[test]
+    fn count_solutions_returns_one_for_unique_puzzle() {
+        let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+        assert_eq!(solver.count_solutions(&game.initial_state, 2), 1);
+    }
+
+    #[test]
+    fn count_solutions_returns_zero_for_no_solution() {
+        let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+
+        // Two cells in the same row both solved to ONE → immediately inconsistent.
+        #[rustfmt::skip]
+        let state = GameState::new_from([
+            1u8, 1, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+        ]);
+        assert_eq!(solver.count_solutions(&state, 2), 0);
+    }
+
+    #[test]
+    fn count_solutions_returns_at_least_two_for_near_empty_board() {
+        let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+
+        // Only one given value → vast number of solutions.
+        #[rustfmt::skip]
+        let state = GameState::new_from([
+            1u8, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+        ]);
+        assert_eq!(solver.count_solutions(&state, 2), 2);
+    }
+
+    #[test]
+    fn count_solutions_stops_at_limit() {
+        let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+
+        #[rustfmt::skip]
+        let state = GameState::new_from([
+            1u8, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+        ]);
+        // limit=0 always returns 0 without touching the stack
+        assert_eq!(solver.count_solutions(&state, 0), 0);
+        // limit=1 stops after the first solution
+        assert_eq!(solver.count_solutions(&state, 1), 1);
+        // limit=3 stops after 3 solutions
+        assert_eq!(solver.count_solutions(&state, 3), 3);
+    }
+
+    #[test]
+    fn is_unique_returns_true_for_unique_puzzle() {
+        let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+        assert!(solver.is_unique(&game.initial_state));
+    }
+
+    #[test]
+    fn is_unique_returns_false_for_near_empty_board() {
+        let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+
+        #[rustfmt::skip]
+        let state = GameState::new_from([
+            1u8, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+        ]);
+        assert!(!solver.is_unique(&state));
+    }
+
+    #[test]
+    fn count_solutions_hypersudoku_is_unique() {
+        let game = crate::example_games::hypersudoku::example_hypersudoku();
+        let solver = DefaultSolver::new(&game);
+        assert_eq!(solver.count_solutions(&game.initial_state, 2), 1);
+    }
+
+    #[test]
+    fn count_solutions_nonomino_is_unique() {
+        let game = crate::example_games::nonomino::example_nonomino();
+        let solver = DefaultSolver::new(&game);
+        assert_eq!(solver.count_solutions(&game.initial_state, 2), 1);
     }
 }
