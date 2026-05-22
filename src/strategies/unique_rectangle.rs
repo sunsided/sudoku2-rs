@@ -1,3 +1,4 @@
+use crate::board_stats::BoardStatsCache;
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::Index;
@@ -56,6 +57,7 @@ impl Strategy for UniqueRectangle {
         &self,
         state: &GameState,
         groups: &CellGroups,
+        _stats: &BoardStatsCache,
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut applied_some = false;
 
@@ -169,6 +171,7 @@ impl Strategy for UniqueRectangle {
         &self,
         _state: &GameState,
         _groups: &CellGroups,
+        _stats: &BoardStatsCache,
         _group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
         unimplemented!("This strategy is not group aware")
@@ -245,7 +248,9 @@ mod tests {
         set_candidates(&state, 1, 3, &[Value::ONE, Value::TWO, Value::THREE]);
 
         let strat = UniqueRectangle { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::AppliedChange);
 
         // Roof loses the pair, retains only the extra candidate.
@@ -277,7 +282,9 @@ mod tests {
         set_candidates(&state, 1, 1, &[Value::ONE, Value::TWO, Value::THREE]);
 
         let strat = UniqueRectangle { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }
 
@@ -294,7 +301,9 @@ mod tests {
         set_candidates(&state, 3, 3, &[Value::ONE, Value::TWO, Value::THREE]);
 
         let strat = UniqueRectangle { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }
 
@@ -303,7 +312,9 @@ mod tests {
         let groups = standard_groups();
         let state = GameState::new();
         let strat = UniqueRectangle { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }
 

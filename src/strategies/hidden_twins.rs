@@ -1,3 +1,4 @@
+use crate::board_stats::BoardStatsCache;
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::IndexBitSet;
@@ -46,6 +47,7 @@ impl Strategy for HiddenTwins {
         &self,
         state: &GameState,
         groups: &CellGroups,
+        _stats: &BoardStatsCache,
         group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut twins_to_apply: Vec<HiddenTwin> = Vec::default();

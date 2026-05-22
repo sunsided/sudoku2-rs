@@ -1,3 +1,4 @@
+use crate::board_stats::BoardStatsCache;
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::Index;
@@ -46,6 +47,7 @@ impl Strategy for NakedTriples {
         &self,
         state: &GameState,
         groups: &CellGroups,
+        _stats: &BoardStatsCache,
         group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut triples_to_apply: Vec<Triple> = Vec::default();
@@ -193,7 +195,12 @@ mod tests {
 
         let strat = NakedTriples { enabled: true };
         let res = strat
-            .apply_in_group(&state, &groups, CellGroupType::StandardRow)
+            .apply_in_group(
+                &state,
+                &groups,
+                &BoardStatsCache::new(&state),
+                CellGroupType::StandardRow,
+            )
             .unwrap();
         assert_eq!(res, StrategyResult::AppliedChange);
 
@@ -227,7 +234,12 @@ mod tests {
         restrict(&state, 3, 0, &[Value::TWO, Value::FIVE, Value::SEVEN]);
 
         let strat = NakedTriples { enabled: true };
-        let res = strat.apply_in_group(&state, &groups, CellGroupType::StandardRow);
+        let res = strat.apply_in_group(
+            &state,
+            &groups,
+            &BoardStatsCache::new(&state),
+            CellGroupType::StandardRow,
+        );
         assert!(res.is_err());
     }
 
@@ -237,7 +249,9 @@ mod tests {
         let state = GameState::new();
 
         let strat = NakedTriples { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }
 }

@@ -1,3 +1,4 @@
+mod board_stats;
 mod cell_group;
 mod coordinate;
 mod default_solver;

@@ -13,6 +13,7 @@ mod w_wing;
 mod xwing;
 mod xy_wing;
 
+use crate::board_stats::BoardStatsCache;
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
 use std::fmt::Debug;
@@ -45,17 +46,21 @@ pub trait Strategy: Debug {
     /// strategy if [`Strategy::apply`] indicates success.
     fn always_continue(&self) -> bool;
 
-    /// Applies the strategy to the state.
+    /// Applies the strategy to the state. The `stats` cache is shared across
+    /// strategies in one pipeline pass; calling `stats.get()` builds the
+    /// board-wide summary lazily, so strategies that don't need it pay
+    /// nothing.
     fn apply(
         &self,
         state: &GameState,
         groups: &CellGroups,
+        stats: &BoardStatsCache,
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut result = StrategyResult::NoChange;
-        result |= self.apply_in_group(state, groups, CellGroupType::Custom)?;
-        result |= self.apply_in_group(state, groups, CellGroupType::StandardBlock)?;
-        result |= self.apply_in_group(state, groups, CellGroupType::StandardRow)?;
-        result |= self.apply_in_group(state, groups, CellGroupType::StandardColumn)?;
+        result |= self.apply_in_group(state, groups, stats, CellGroupType::Custom)?;
+        result |= self.apply_in_group(state, groups, stats, CellGroupType::StandardBlock)?;
+        result |= self.apply_in_group(state, groups, stats, CellGroupType::StandardRow)?;
+        result |= self.apply_in_group(state, groups, stats, CellGroupType::StandardColumn)?;
         Ok(result)
     }
 
@@ -70,6 +75,7 @@ pub trait Strategy: Debug {
         &self,
         state: &GameState,
         groups: &CellGroups,
+        stats: &BoardStatsCache,
         group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState>;
 }

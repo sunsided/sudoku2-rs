@@ -1,3 +1,4 @@
+use crate::board_stats::BoardStatsCache;
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::IndexBitSet;
@@ -48,6 +49,7 @@ impl Strategy for HiddenTriples {
         &self,
         state: &GameState,
         groups: &CellGroups,
+        _stats: &BoardStatsCache,
         group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut triples_to_apply: Vec<HiddenTriple> = Vec::default();
@@ -227,7 +229,12 @@ mod tests {
 
         let strat = HiddenTriples { enabled: true };
         let res = strat
-            .apply_in_group(&state, &groups, CellGroupType::StandardRow)
+            .apply_in_group(
+                &state,
+                &groups,
+                &BoardStatsCache::new(&state),
+                CellGroupType::StandardRow,
+            )
             .unwrap();
         assert_eq!(res, StrategyResult::AppliedChange);
 
@@ -251,7 +258,9 @@ mod tests {
         let state = GameState::new();
 
         let strat = HiddenTriples { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }
 
@@ -266,7 +275,12 @@ mod tests {
 
         let strat = HiddenTriples { enabled: true };
         let res = strat
-            .apply_in_group(&state, &groups, CellGroupType::StandardRow)
+            .apply_in_group(
+                &state,
+                &groups,
+                &BoardStatsCache::new(&state),
+                CellGroupType::StandardRow,
+            )
             .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }

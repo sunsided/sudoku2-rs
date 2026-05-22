@@ -1,3 +1,4 @@
+use crate::board_stats::BoardStatsCache;
 use crate::cell_group::{CellGroup, CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::IndexBitSet;
@@ -51,6 +52,7 @@ impl Strategy for HPattern {
         &self,
         state: &GameState,
         groups: &CellGroups,
+        _stats: &BoardStatsCache,
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut applied_some = false;
 
@@ -88,6 +90,7 @@ impl Strategy for HPattern {
         &self,
         _state: &GameState,
         _groups: &CellGroups,
+        _stats: &BoardStatsCache,
         _group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
         unimplemented!("This strategy is not group aware")
@@ -461,7 +464,9 @@ mod tests {
             }
         }
         let strat = HPattern { enabled: true };
-        let _ = strat.apply(&state, &game.groups).unwrap();
+        let _ = strat
+            .apply(&state, &game.groups, &BoardStatsCache::new(&state))
+            .unwrap();
 
         for index in crate::Index::range() {
             let solved = solution
@@ -517,7 +522,9 @@ mod tests {
         }
 
         let strat = HPattern { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::AppliedChange);
 
         // Pointing fires for box 0 -> row 0, clearing 1 from (3,0) and
@@ -585,7 +592,9 @@ mod tests {
 
         let strat = HPattern { enabled: true };
         // Should run without panicking and without emptying (8,0).
-        let _ = strat.apply(&state, &groups).unwrap();
+        let _ = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert!(state.get_at_xy(8, 0).contains(Value::ONE));
         assert!(state.get_at_xy(8, 0).is_solved());
     }
@@ -597,7 +606,9 @@ mod tests {
         let groups = CellGroups::default().with_default_rows_and_columns();
         let state = GameState::new();
         let strat = HPattern { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }
 
@@ -625,7 +636,9 @@ mod tests {
         }
 
         let strat = HPattern { enabled: true };
-        let res = strat.apply(&state, &game.groups).unwrap();
+        let res = strat
+            .apply(&state, &game.groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::AppliedChange);
 
         // Row 0 cells outside the block must lose 1 as a candidate.
@@ -659,7 +672,9 @@ mod tests {
         }
 
         let strat = HPattern { enabled: true };
-        let res = strat.apply(&state, &game.groups).unwrap();
+        let res = strat
+            .apply(&state, &game.groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::AppliedChange);
 
         // Block 0 cells outside row 0 must lose 5 as a candidate.
@@ -698,7 +713,9 @@ mod tests {
         }
 
         let strat = HPattern { enabled: true };
-        let res = strat.apply(&state, &game.groups).unwrap();
+        let res = strat
+            .apply(&state, &game.groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::AppliedChange);
 
         // Row 1 outside the window: cells 9, 13, 14, 15, 16, 17.

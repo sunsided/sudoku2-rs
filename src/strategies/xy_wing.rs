@@ -1,8 +1,9 @@
+use crate::board_stats::BoardStatsCache;
 use crate::cell_group::{CellGroupType, CellGroups, CollectIndexes};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::Index;
 use crate::strategies::{Strategy, StrategyResult};
-use crate::value::{Value, ValueBitSet};
+use crate::value::Value;
 use log::{debug, trace};
 use std::fmt::{Debug, Formatter};
 
@@ -47,22 +48,14 @@ impl Strategy for XYWing {
         &self,
         state: &GameState,
         groups: &CellGroups,
+        stats: &BoardStatsCache,
     ) -> Result<StrategyResult, InvalidGameState> {
-        // Precompute every bivalue cell on the board once.
-        let mut bivalues: Vec<Bivalue> = Vec::with_capacity(32);
-        for cell in state.iter_indexed() {
-            if cell.len() == 2 {
-                bivalues.push(Bivalue {
-                    index: cell.index,
-                    values: cell.to_bitset(),
-                });
-            }
-        }
-
-        // An XY-Wing requires at least three bivalue cells.
-        if bivalues.len() < 3 {
+        // Bivalues come from the shared lazy cache.
+        let stats_ref = stats.get();
+        if stats_ref.bivalues.len() < 3 {
             return Ok(StrategyResult::NoChange);
         }
+        let bivalues: &[crate::board_stats::Bivalue] = &stats_ref.bivalues;
 
         let mut hits: Vec<XYWingHit> = Vec::default();
 
@@ -191,16 +184,11 @@ impl Strategy for XYWing {
         &self,
         _state: &GameState,
         _groups: &CellGroups,
+        _stats: &BoardStatsCache,
         _group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
         unimplemented!("This strategy is not group aware")
     }
-}
-
-#[derive(Copy, Clone)]
-struct Bivalue {
-    index: Index,
-    values: ValueBitSet,
 }
 
 struct XYWingHit {
@@ -245,7 +233,9 @@ mod tests {
         set_candidates(&state, 0, 5, &[Value::TWO, Value::THREE]);
 
         let strat = XYWing { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::AppliedChange);
 
         // Common peer of the two pincers (other than the pivot) loses 3.
@@ -263,7 +253,9 @@ mod tests {
         let groups = standard_groups();
         let state = GameState::new();
         let strat = XYWing { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }
 
@@ -279,7 +271,9 @@ mod tests {
         set_candidates(&state, 0, 5, &[Value::ONE, Value::TWO]);
 
         let strat = XYWing { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }
 }

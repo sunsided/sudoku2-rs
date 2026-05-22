@@ -1,8 +1,9 @@
+use crate::board_stats::BoardStatsCache;
 use crate::cell_group::{CellGroupType, CellGroups, CollectIndexes};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::{Index, IndexBitSet};
 use crate::strategies::{Strategy, StrategyResult};
-use crate::value::{Value, ValueBitSet};
+use crate::value::Value;
 use log::{debug, trace};
 use std::fmt::{Debug, Formatter};
 
@@ -51,55 +52,40 @@ impl Strategy for WWing {
         &self,
         state: &GameState,
         groups: &CellGroups,
+        stats: &BoardStatsCache,
     ) -> Result<StrategyResult, InvalidGameState> {
-        // Collect every bivalue cell on the board once per invocation.
-        let mut bivalues: Vec<Bivalue> = Vec::with_capacity(32);
-        for cell in state.iter_indexed() {
-            if cell.len() == 2 {
-                bivalues.push(Bivalue {
-                    index: cell.index,
-                    values: cell.to_bitset(),
-                });
-            }
-        }
-
-        // A W-Wing requires at least two bivalue cells.
-        if bivalues.len() < 2 {
+        // Bivalues + per-value positions come from the shared lazy cache.
+        let stats_ref = stats.get();
+        if stats_ref.bivalues.len() < 2 {
             return Ok(StrategyResult::NoChange);
         }
+        let bivalues: &[crate::board_stats::Bivalue] = &stats_ref.bivalues;
 
         // Enumerate the strong links on each candidate value, bucketed by the
         // value index for O(1) lookup during the pair scan. A strong link is a
         // group in which `value` is a candidate in exactly two unsolved cells.
-        // Solved cells are skipped: in a propagated state they should have
-        // removed `value` from all peers in the group, so counting them would
-        // produce spurious strong links if propagation is incomplete.
+        // We read the per-value candidate position sets from `BoardStats` and
+        // intersect them with each group's index set - much cheaper than the
+        // earlier per-group per-value cell walk.
         let mut strong_links_by_value: [Vec<StrongLink>; 9] = Default::default();
         let mut any_strong_link = false;
         for value in Value::range() {
-            let bucket = &mut strong_links_by_value[(value.get() - 1) as usize];
+            let v_idx = (value.get() - 1) as usize;
+            let positions = stats_ref.per_value_unsolved[v_idx];
+            if positions.len() < 2 {
+                continue;
+            }
+            let bucket = &mut strong_links_by_value[v_idx];
             for group in groups.iter() {
-                let mut endpoints = [Index::default(); 2];
-                let mut count = 0usize;
-                for index in group.iter_indexes() {
-                    let cell = state.get_at_index(index);
-                    if !cell.is_solved() && cell.contains(value) {
-                        if count < 2 {
-                            endpoints[count] = index;
-                        }
-                        count += 1;
-                        if count > 2 {
-                            break;
-                        }
-                    }
+                let in_group = positions.intersect(group.indexes());
+                if in_group.len() != 2 {
+                    continue;
                 }
-                if count == 2 {
-                    bucket.push(StrongLink {
-                        a: endpoints[0],
-                        b: endpoints[1],
-                    });
-                    any_strong_link = true;
-                }
+                let mut iter = in_group.iter();
+                let a = iter.next().expect("len was 2");
+                let b = iter.next().expect("len was 2");
+                bucket.push(StrongLink { a, b });
+                any_strong_link = true;
             }
         }
 
@@ -240,16 +226,11 @@ impl Strategy for WWing {
         &self,
         _state: &GameState,
         _groups: &CellGroups,
+        _stats: &BoardStatsCache,
         _group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
         unimplemented!("This strategy is not group aware")
     }
-}
-
-#[derive(Copy, Clone)]
-struct Bivalue {
-    index: Index,
-    values: ValueBitSet,
 }
 
 #[derive(Copy, Clone)]
@@ -312,7 +293,9 @@ mod tests {
         }
 
         let strat = WWing { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::AppliedChange);
 
         // (0,8) and (8,0) each see both bivalues (column + row) and must
@@ -342,7 +325,9 @@ mod tests {
         set_candidates(&state, 8, 8, &[Value::ONE, Value::TWO]);
 
         let strat = WWing { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }
 
@@ -363,7 +348,9 @@ mod tests {
         }
 
         let strat = WWing { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }
 
@@ -372,7 +359,9 @@ mod tests {
         let groups = standard_groups();
         let state = GameState::new();
         let strat = WWing { enabled: true };
-        let res = strat.apply(&state, &groups).unwrap();
+        let res = strat
+            .apply(&state, &groups, &BoardStatsCache::new(&state))
+            .unwrap();
         assert_eq!(res, StrategyResult::NoChange);
     }
 }

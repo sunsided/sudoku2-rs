@@ -1,3 +1,4 @@
+use crate::board_stats::BoardStatsCache;
 use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::{GameState, InvalidGameState};
 use crate::index::Index;
@@ -44,6 +45,7 @@ impl Strategy for HiddenSingles {
         &self,
         state: &GameState,
         groups: &CellGroups,
+        _stats: &BoardStatsCache,
         group_type: CellGroupType,
     ) -> Result<StrategyResult, InvalidGameState> {
         let mut applied_some = false;
