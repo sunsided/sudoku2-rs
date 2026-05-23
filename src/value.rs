@@ -76,6 +76,12 @@ impl TryFrom<u8> for Value {
     }
 }
 
+impl From<Value> for u8 {
+    fn from(v: Value) -> u8 {
+        v.get()
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 #[error("The specified value `{0}` is out of range")]
 pub struct ValueOutOfRangeError(u8);
