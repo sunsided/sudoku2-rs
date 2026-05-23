@@ -95,6 +95,15 @@ tasks:
     cmds:
       - cargo run --example solver -- {{.CLI_ARGS}}
 
+  generate:
+    desc: >-
+      Generate a puzzle (variant, difficulty, symmetry, seed via CLI_ARGS).
+      E.g.: task generate -- --variant standard --difficulty hard --seed 42
+    aliases:
+      - gen
+    cmds:
+      - cargo run --release --example generate -- {{.CLI_ARGS}}
+
   examples:
     desc: Run all examples
     aliases:
