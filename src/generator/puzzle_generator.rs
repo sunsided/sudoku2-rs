@@ -144,7 +144,7 @@ impl PuzzleGenerator {
         })
     }
 
-    fn build_groups<R: Rng>(&self, rng: &mut R) -> Option<CellGroups> {
+    pub(crate) fn build_groups<R: Rng>(&self, rng: &mut R) -> Option<CellGroups> {
         match self.config.variant {
             Variant::Standard => Some(
                 CellGroups::default()
@@ -351,5 +351,86 @@ mod tests {
             }
         }
         assert!(hits >= 5, "only {hits}/10 medium puzzles generated");
+    }
+
+    #[test]
+    fn hypersudoku_build_groups_returns_some() {
+        let mut rng = StdRng::seed_from_u64(1);
+        let config = PuzzleGeneratorConfig {
+            variant: Variant::Hypersudoku,
+            ..Default::default()
+        };
+        let groups = PuzzleGenerator::new(config)
+            .build_groups(&mut rng)
+            .expect("Hypersudoku build_groups must always return Some");
+        assert!(
+            groups.iter().count() > 27,
+            "Hypersudoku must have more than 27 groups"
+        );
+    }
+
+    #[test]
+    fn nonomino_build_groups_calls_region_generator() {
+        // Verify build_groups exercises the Nonomino branch without invoking
+        // the slow grid generator. We call it until we get a Some result, so
+        // both the Some and None code paths in NonominoRegionGenerator::generate
+        // are exercised over multiple seeds.
+        let config = PuzzleGeneratorConfig {
+            variant: Variant::Nonomino,
+            ..Default::default()
+        };
+        let generator = PuzzleGenerator::new(config);
+        let mut found_some = false;
+        for seed in 0u64..50 {
+            let mut rng = StdRng::seed_from_u64(seed);
+            if generator.build_groups(&mut rng).is_some() {
+                found_some = true;
+                break;
+            }
+        }
+        assert!(
+            found_some,
+            "Nonomino region generator must succeed for at least one seed"
+        );
+    }
+
+    #[test]
+    fn error_display_with_closest() {
+        let mut rng = StdRng::seed_from_u64(1);
+        let config = PuzzleGeneratorConfig {
+            variant: Variant::Standard,
+            target_difficulty: Difficulty::Medium,
+            symmetry: Symmetry::None,
+            max_attempts: 1,
+        };
+        // Run one attempt; wrap whatever we get into a MaxAttemptsExceeded with
+        // a populated closest to exercise the Display branch that shows the
+        // closest difficulty.
+        let generator = PuzzleGenerator::new(config);
+        let groups = generator
+            .build_groups(&mut rng)
+            .expect("Standard always builds groups");
+        let solution = crate::generator::GridGenerator::new(groups.clone()).generate(&mut rng);
+        let digger = crate::generator::ClueDigger::new(&groups);
+        let state = digger.dig(
+            &solution,
+            crate::generator::RemovalStrategy::Random,
+            crate::generator::StoppingCondition::Minimal,
+            &mut rng,
+        );
+        let difficulty = crate::difficulty_estimator::estimate_difficulty(&state, &groups);
+        let puzzle = Puzzle {
+            state,
+            solution,
+            groups,
+            difficulty,
+        };
+        let err = GenerationError::MaxAttemptsExceeded {
+            attempts: 7,
+            closest: Some(puzzle),
+        };
+        let s = err.to_string();
+        assert!(s.contains("7"));
+        assert!(s.contains("closest"));
     }
 }
