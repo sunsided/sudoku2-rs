@@ -14,6 +14,8 @@ mod state_stack;
 mod strategies;
 mod value;
 pub mod visualization;
+#[cfg(feature = "wasm")]
+pub mod wasm;
 
 pub use crate::cell_group::{CellGroup, CellGroupType, CellGroups, CollectIndexes};
 pub use crate::coordinate::Coordinate;

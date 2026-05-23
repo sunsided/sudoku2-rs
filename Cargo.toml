@@ -6,6 +6,9 @@ edition = "2021"
 authors = ["Markus Mayer"]
 license = "EUPL-1.2"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [[example]]
 name = "solver"
 path = "examples/solver.rs"
@@ -21,12 +24,22 @@ harness = false
 [features]
 default = ["smallvec"]
 smallvec = ["dep:smallvec"]
+wasm = [
+    "dep:js-sys",
+    "dep:serde",
+    "dep:serde-wasm-bindgen",
+    "dep:wasm-bindgen",
+]
 
 [dependencies]
+js-sys = { version = "0.3.82", optional = true }
 log = "0.4.29"
 rand = "0.10.1"
+serde = { version = "1.0.228", features = ["derive"], optional = true }
+serde-wasm-bindgen = { version = "0.6.5", optional = true }
 smallvec = { version = "1.15.1", features = ["union"], optional = true }
 thiserror = "2.0.18"
+wasm-bindgen = { version = "0.2.105", optional = true }
 
 [dev-dependencies]
 clap = "4.6.1"

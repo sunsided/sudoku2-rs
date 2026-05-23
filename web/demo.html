@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>sudoku2 WASM demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1.5rem; line-height: 1.4; }
+    textarea, select, input, button { width: 100%; margin: 0.3rem 0 0.8rem; }
+    textarea { min-height: 7rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    pre { background: #111; color: #eee; padding: 0.8rem; border-radius: 6px; overflow-x: auto; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; }
+  </style>
+</head>
+<body>
+<h1>sudoku2 WASM integration demo</h1>
+
+<div class="grid">
+  <section class="card">
+    <h2>Solve puzzle</h2>
+    <label for="solve-variant">Variant</label>
+    <select id="solve-variant">
+      <option value="standard">standard</option>
+      <option value="hypersudoku">hypersudoku</option>
+      <option value="nonomino">nonomino</option>
+    </select>
+
+    <label for="solve-format">Puzzle format</label>
+    <select id="solve-format">
+      <option value="auto">auto</option>
+      <option value="line">line</option>
+      <option value="grid">grid</option>
+    </select>
+
+    <label for="solve-puzzle">Puzzle input (line or grid)</label>
+    <textarea id="solve-puzzle"></textarea>
+
+    <label for="solve-region">Nonomino region line (A-I, optional unless variant=nonomino)</label>
+    <textarea id="solve-region"></textarea>
+
+    <button id="solve-button">Solve</button>
+    <pre id="solve-output"></pre>
+  </section>
+
+  <section class="card">
+    <h2>Generate puzzle</h2>
+    <label for="gen-variant">Variant</label>
+    <select id="gen-variant">
+      <option value="standard">standard</option>
+      <option value="hypersudoku">hypersudoku</option>
+      <option value="nonomino">nonomino</option>
+    </select>
+
+    <label for="gen-difficulty">Target difficulty</label>
+    <select id="gen-difficulty">
+      <option value="easy">easy</option>
+      <option value="medium" selected>medium</option>
+      <option value="hard">hard</option>
+      <option value="expert">expert</option>
+      <option value="extreme">extreme</option>
+    </select>
+
+    <label for="gen-symmetry">Symmetry</label>
+    <select id="gen-symmetry">
+      <option value="none" selected>none</option>
+      <option value="rotational">rotational</option>
+    </select>
+
+    <label for="gen-attempts">Max attempts</label>
+    <input id="gen-attempts" type="number" min="1" value="200" />
+
+    <label for="gen-seed">Seed (optional)</label>
+    <input id="gen-seed" type="number" />
+
+    <button id="generate-button">Generate</button>
+    <pre id="generate-output"></pre>
+  </section>
+</div>
+
+<script type="module" src="./demo.js"></script>
+</body>
+</html>

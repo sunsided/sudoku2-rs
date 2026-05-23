@@ -60,6 +60,31 @@ cargo run --release --example solver --no-hidden-twins
 
 Set the log level to `trace` for more fine-grained information.
 
+## WASM integration (draft)
+
+The crate now ships an opt-in WASM interface behind the `wasm` feature.
+
+Exposed entry points:
+
+- `solve_puzzle(input)` for one-shot solving of Sudoku / Hypersudoku / Nonomino puzzles.
+- `generate_puzzle(input)` for background-style generation (single call, no callbacks yet).
+
+Build the web package:
+
+```bash
+wasm-pack build --target web --features wasm --out-dir pkg
+```
+
+Run the demo page:
+
+```bash
+python3 -m http.server
+# open http://localhost:8000/web/demo.html
+```
+
+The demo is a simple smoke-test harness for request/response payloads and can be used to validate
+both solving and generation in a browser.
+
 ## Sudoku example
 
 For reference, here's an example puzzle from the Wikipedia [Sudoku](https://en.wikipedia.org/wiki/Sudoku) page:
