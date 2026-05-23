@@ -35,7 +35,7 @@ pub struct ClueDigger {
 }
 
 impl ClueDigger {
-    pub fn new(groups: CellGroups) -> Self {
+    pub fn new(groups: &CellGroups) -> Self {
         // Advanced strategies (HiddenSingles, etc.) assume the state is
         // consistent and can panic via debug_assert when applied during
         // backtracking over states with multiple solutions. NakedSingles only
@@ -56,7 +56,7 @@ impl ClueDigger {
             unique_rectangle: false,
         };
         Self {
-            solver: DefaultSolver::new_with(&groups, &config),
+            solver: DefaultSolver::new_with(groups, &config),
         }
     }
 
@@ -187,7 +187,7 @@ mod tests {
     fn random_produces_unique_puzzle() {
         let mut rng = StdRng::seed_from_u64(42);
         let solution = make_solution(&mut rng);
-        let digger = ClueDigger::new(standard_groups());
+        let digger = ClueDigger::new(&standard_groups());
         let puzzle = digger.dig(
             &solution,
             RemovalStrategy::Random,
@@ -203,7 +203,7 @@ mod tests {
     fn random_clue_count_stop() {
         let mut rng = StdRng::seed_from_u64(7);
         let solution = make_solution(&mut rng);
-        let digger = ClueDigger::new(standard_groups());
+        let digger = ClueDigger::new(&standard_groups());
         let puzzle = digger.dig(
             &solution,
             RemovalStrategy::Random,
@@ -222,7 +222,7 @@ mod tests {
     fn symmetric_produces_unique_puzzle() {
         let mut rng = StdRng::seed_from_u64(123);
         let solution = make_solution(&mut rng);
-        let digger = ClueDigger::new(standard_groups());
+        let digger = ClueDigger::new(&standard_groups());
         let puzzle = digger.dig(
             &solution,
             RemovalStrategy::Symmetric,
@@ -238,7 +238,7 @@ mod tests {
     fn symmetric_produces_180_degree_symmetry() {
         let mut rng = StdRng::seed_from_u64(99);
         let solution = make_solution(&mut rng);
-        let digger = ClueDigger::new(standard_groups());
+        let digger = ClueDigger::new(&standard_groups());
         let puzzle = digger.dig(
             &solution,
             RemovalStrategy::Symmetric,
@@ -263,7 +263,7 @@ mod tests {
     fn minimal_puzzle_has_no_removable_clues() {
         let mut rng = StdRng::seed_from_u64(55);
         let solution = make_solution(&mut rng);
-        let digger = ClueDigger::new(standard_groups());
+        let digger = ClueDigger::new(&standard_groups());
         let puzzle = digger.dig(
             &solution,
             RemovalStrategy::Random,

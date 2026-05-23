@@ -114,7 +114,7 @@ impl PuzzleGenerator {
             };
 
             let solution = GridGenerator::new(groups.clone()).generate(rng);
-            let digger = ClueDigger::new(groups.clone());
+            let digger = ClueDigger::new(&groups);
             let removal = match self.config.symmetry {
                 Symmetry::None => RemovalStrategy::Random,
                 Symmetry::Rotational180 => RemovalStrategy::Symmetric,
