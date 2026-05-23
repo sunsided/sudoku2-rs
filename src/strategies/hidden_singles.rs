@@ -81,10 +81,6 @@ impl Strategy for HiddenSingles {
             }
 
             // Apply each value whose unsolved footprint is exactly one cell.
-            // Placements propagate, but distinct singles inside the same
-            // group must live in distinct cells (otherwise the cell would be
-            // over-constrained and the board inconsistent), so collected hits
-            // never collide.
             for (v_idx, value) in Value::range().enumerate() {
                 if counts[v_idx] != 1 {
                     continue;
@@ -94,6 +90,13 @@ impl Strategy for HiddenSingles {
                     // already placed, no work to do.
                     continue;
                 };
+                // Guard against over-constrained states: if a preceding
+                // placement in this loop already solved this cell to a
+                // different value, the board is contradictory.
+                let cell = state.get_at_index(index);
+                if !cell.contains(value) {
+                    return Err(InvalidGameState {});
+                }
                 if state.place_and_propagate_at_index(index, value, groups) {
                     debug!(
                         "Applied Hidden Single {value:?} at {iut:?}",
