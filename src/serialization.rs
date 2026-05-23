@@ -41,17 +41,18 @@ impl SudokuSerializer {
     /// characters, or [`ParseError::InvalidCharacter`] for any character that is
     /// not `0`-`9` or `.`.
     pub fn parse_line(s: &str) -> Result<GameState, ParseError> {
-        let chars: Vec<char> = s.chars().collect();
-        if chars.len() != 81 {
-            return Err(ParseError::InvalidLength { found: chars.len() });
+        let found = s.chars().count();
+        if found != 81 {
+            return Err(ParseError::InvalidLength { found });
         }
         Self::build_state(s.char_indices(), |c| !matches!(c, '.' | '0'..='9'))
     }
 
     /// Parses a multi-line grid string into a [`GameState`].
     ///
-    /// Whitespace and the separator characters `|`, `-`, `+` are ignored.
-    /// All other characters must be `0`-`9` or `.`.
+    /// Unicode whitespace (as determined by [`char::is_whitespace`]) and the
+    /// separator characters `|`, `-`, `+` are skipped. All remaining characters
+    /// must be `0`-`9` or `.`.
     ///
     /// # Errors
     ///
@@ -61,7 +62,7 @@ impl SudokuSerializer {
     pub fn parse_grid(s: &str) -> Result<GameState, ParseError> {
         let filtered = s
             .char_indices()
-            .filter(|(_, c)| !matches!(c, ' ' | '\t' | '\n' | '\r' | '|' | '-' | '+'));
+            .filter(|(_, c)| !c.is_whitespace() && !matches!(c, '|' | '-' | '+'));
         Self::build_state(filtered, |c| !matches!(c, '.' | '0'..='9'))
     }
 
@@ -106,16 +107,18 @@ impl SudokuSerializer {
         let mut count = 0usize;
 
         for (offset, ch) in iter {
+            // Check count first so that an over-long input produces InvalidLength
+            // rather than InvalidCharacter when the surplus character happens to
+            // be invalid.
+            if count >= 81 {
+                count += 1;
+                continue;
+            }
             if is_invalid(ch) {
                 return Err(ParseError::InvalidCharacter {
                     offset,
                     character: ch,
                 });
-            }
-            if count >= 81 {
-                // Extra cells: will be caught as InvalidLength after the loop.
-                count += 1;
-                continue;
             }
             if let Some(digit) = ch.to_digit(10).filter(|&d| d > 0) {
                 let index = Index::new(count as u8);
@@ -211,6 +214,20 @@ mod tests {
             SudokuSerializer::parse_grid(bad).unwrap_err(),
             ParseError::InvalidCharacter { character: '?', .. }
         ));
+    }
+
+    #[test]
+    fn parse_grid_error_on_wrong_length() {
+        let short = "530070000\n600195000\n098000060\n800060003\n400803001\n700020006\n060000280\n000419005\n";
+        assert_eq!(
+            SudokuSerializer::parse_grid(short).unwrap_err(),
+            ParseError::InvalidLength { found: 72 }
+        );
+        let long = "530070000\n600195000\n098000060\n800060003\n400803001\n700020006\n060000280\n000419005\n000080079\n123456789\n";
+        assert_eq!(
+            SudokuSerializer::parse_grid(long).unwrap_err(),
+            ParseError::InvalidLength { found: 90 }
+        );
     }
 
     #[test]
