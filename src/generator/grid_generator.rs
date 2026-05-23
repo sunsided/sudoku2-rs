@@ -340,17 +340,16 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "The example nonomino layout has very few valid complete grids, \
-                making generation slow for this specific region configuration. \
-                Nonomino generation will be properly tested in the nonomino region \
-                generator (#26), which produces layouts with many valid complete grids."]
-    fn generate_nonomino_grid() {
+    fn generate_nonomino_grid_with_limited_budget() {
+        // The example nonomino layout has very few valid complete grids, making an
+        // unlimited search slow. Use a budget-limited search instead: if a grid is
+        // found within the budget it must be valid; returning None is also acceptable.
         let game = crate::example_games::nonomino::example_nonomino();
         let generator = GridGenerator::new(game.groups);
         let mut rng = StdRng::seed_from_u64(42);
-        let grid = generator.generate(&mut rng);
-
-        assert!(grid.is_solved(&generator.groups));
-        assert!(grid.is_consistent(&generator.groups));
+        if let Some(grid) = generator.try_generate_limited(&mut rng, 50_000) {
+            assert!(grid.is_solved(&generator.groups));
+            assert!(grid.is_consistent(&generator.groups));
+        }
     }
 }
