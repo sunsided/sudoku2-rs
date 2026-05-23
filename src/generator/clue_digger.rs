@@ -71,6 +71,10 @@ impl ClueDigger {
         stop: StoppingCondition,
         rng: &mut R,
     ) -> GameState {
+        debug_assert!(
+            solution.iter_indexed().all(|c| c.is_solved()),
+            "solution must be a fully solved grid"
+        );
         let mut clues: [Option<Value>; 81] = [None; 81];
         for cell in solution.iter_indexed() {
             if cell.is_solved() {
@@ -150,7 +154,7 @@ impl ClueDigger {
         let mut values = [0u8; 81];
         for (i, v) in clues.iter().enumerate() {
             if let Some(val) = v {
-                values[i] = val.get();
+                values[i] = u8::from(*val);
             }
         }
         GameState::new_from(values)
@@ -208,10 +212,10 @@ mod tests {
         );
 
         let count = puzzle.iter_indexed().filter(|c| c.is_solved()).count();
-        assert!(count <= 81, "clue count {count} should be at most 81");
-        // With ClueCount(25), we stop as soon as count <= 25, so result may be >=25
-        // (the last removal may push it to exactly 25 or stop before reaching 25)
-        assert!(count >= 20, "clue count {count} should be reasonable");
+        assert!(
+            count <= 25,
+            "clue count {count} exceeds ClueCount(25) target"
+        );
     }
 
     #[test]
@@ -279,7 +283,7 @@ mod tests {
             let mut values = [0u8; 81];
             for cell in puzzle.iter_indexed() {
                 if cell.is_solved() && *cell.index as usize != idx {
-                    values[*cell.index as usize] = cell.iter_candidates().next().unwrap().get();
+                    values[*cell.index as usize] = u8::from(cell.iter_candidates().next().unwrap());
                 }
             }
             let reduced = GameState::new_from(values);
