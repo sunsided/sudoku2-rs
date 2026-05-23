@@ -243,19 +243,22 @@ impl Iterator for IntoIndexBitSetIter {
     type Item = Index;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let state = &self.state;
-        let mut index = self.index;
-        while index < 81 {
-            let test = 1u128 << index;
-            if state & test != 0 {
-                self.index = index + 1;
-                return Some(Index::new(index));
-            }
-            index += 1;
+        if self.index >= 81 {
+            return None;
         }
-
-        self.index = 81;
-        None
+        let remaining = self.state >> self.index;
+        if remaining == 0 {
+            self.index = 81;
+            return None;
+        }
+        let offset = remaining.trailing_zeros() as u8;
+        let index = self.index + offset;
+        if index >= 81 {
+            self.index = 81;
+            return None;
+        }
+        self.index = index + 1;
+        Some(Index::new(index))
     }
 }
 
