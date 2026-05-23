@@ -22,7 +22,8 @@ pub use crate::game::Game;
 pub use crate::game_cell::{GameCell, IndexedGameCell};
 pub use crate::game_state::GameState;
 pub use crate::generator::{
-    ClueDigger, NonominoRegionGenerator, RemovalStrategy, StoppingCondition,
+    ClueDigger, GenerationError, NonominoRegionGenerator, Puzzle, PuzzleGenerator,
+    PuzzleGeneratorConfig, RemovalStrategy, StoppingCondition, Symmetry, Variant,
 };
 pub use crate::index::Index;
 pub use crate::index::IndexBitSet;
