@@ -154,7 +154,7 @@ fn solve_puzzle_impl(req: SolveRequest) -> Result<SolveResponse, String> {
 }
 
 fn generate_puzzle_impl(req: GenerateRequest) -> Result<GenerateResponse, String> {
-    let seed = req.seed.unwrap_or_else(|| js_sys::Date::now() as u64);
+    let seed = req.seed.unwrap_or_else(default_seed);
     let mut rng = StdRng::seed_from_u64(seed);
     let target_difficulty = map_difficulty(req.target_difficulty);
 
@@ -188,8 +188,8 @@ fn generate_puzzle_impl(req: GenerateRequest) -> Result<GenerateResponse, String
             difficulty: difficulty_name(puzzle.difficulty).to_string(),
             target_met: puzzle.difficulty == target_difficulty,
             warning: Some(format!(
-                "target difficulty {:?} not reached in {attempts} attempts",
-                target_difficulty
+                "target difficulty {} not reached in {attempts} attempts",
+                difficulty_name(target_difficulty)
             )),
         }),
         Err(GenerationError::MaxAttemptsExceeded {
@@ -199,6 +199,12 @@ fn generate_puzzle_impl(req: GenerateRequest) -> Result<GenerateResponse, String
             "generation failed after {attempts} attempts without producing a puzzle"
         )),
     }
+}
+
+fn default_seed() -> u64 {
+    let date_bits = js_sys::Date::now().to_bits();
+    let random_bits = js_sys::Math::random().to_bits();
+    date_bits ^ random_bits.rotate_left(17)
 }
 
 fn parse_state(puzzle: &str, format: PuzzleFormat) -> Result<crate::GameState, String> {

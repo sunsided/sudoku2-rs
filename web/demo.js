@@ -34,7 +34,7 @@ byId("generate-button").addEventListener("click", () => {
       variant: byId("gen-variant").value,
       target_difficulty: byId("gen-difficulty").value,
       symmetry: byId("gen-symmetry").value,
-      max_attempts: Number(byId("gen-attempts").value || 200),
+      max_attempts: Number(byId("gen-attempts").value),
       seed: seedText === undefined ? undefined : Number(seedText),
     };
     setOutput("generate-output", generate_puzzle(request));
