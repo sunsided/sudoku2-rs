@@ -52,8 +52,6 @@ fn fill_grid<R: Rng>(state: &GameState, groups: &CellGroups, rng: &mut R) -> Opt
     };
 
     let cell = state.get_at_index(index);
-    debug_assert!(!cell.is_impossible());
-
     let mut candidates: Vec<Value> = cell.iter_candidates().collect();
     candidates.shuffle(rng);
 
@@ -89,15 +87,16 @@ fn propagate_naked_singles(state: &GameState, groups: &CellGroups, seed: Index) 
     // starts from solved peers of seed — those are the newly-created naked
     // singles that need their own values removed from their peers.
     let mut queue: Vec<Index> = Vec::new();
-    if let Ok(peers) = groups.get_peers_at_index(seed, CollectIndexes::ExcludeSelf) {
-        for peer_index in peers.iter() {
-            let peer = state.get_at_index(peer_index);
-            if peer.is_impossible() {
-                return false;
-            }
-            if peer.is_solved() {
-                queue.push(peer_index);
-            }
+    let seed_peers = groups
+        .get_peers_at_index(seed, CollectIndexes::ExcludeSelf)
+        .expect("CellGroups must have peers for every cell index");
+    for peer_index in seed_peers.iter() {
+        let peer = state.get_at_index(peer_index);
+        if peer.is_impossible() {
+            return false;
+        }
+        if peer.is_solved() {
+            queue.push(peer_index);
         }
     }
 
@@ -108,10 +107,9 @@ fn propagate_naked_singles(state: &GameState, groups: &CellGroups, seed: Index) 
         }
         let value = cell.iter_candidates().next().unwrap();
 
-        let peers = match groups.get_peers_at_index(index, CollectIndexes::ExcludeSelf) {
-            Ok(p) => p,
-            Err(_) => continue,
-        };
+        let peers = groups
+            .get_peers_at_index(index, CollectIndexes::ExcludeSelf)
+            .expect("CellGroups must have peers for every cell index");
 
         for peer_index in peers.iter() {
             let peer = state.get_at_index(peer_index);
@@ -152,6 +150,8 @@ fn most_constrained_unsolved(state: &GameState) -> Option<Index> {
 mod tests {
     use super::*;
     use crate::cell_group::CellGroups;
+    use crate::index::Index;
+    use crate::value::Value;
     use rand::rngs::StdRng;
     use rand::SeedableRng;
 
@@ -208,6 +208,57 @@ mod tests {
 
         assert!(grid.is_solved(&generator.groups));
         assert!(grid.is_consistent(&generator.groups));
+    }
+
+    // --- propagate_naked_singles unit tests ---
+
+    #[test]
+    fn propagate_returns_false_when_direct_peer_is_impossible() {
+        // Cell 1 (same row as cell 0) is pre-set to ONE.
+        // Placing ONE in cell 0 removes ONE from cell 1 → cell 1 becomes impossible.
+        // propagate_naked_singles must detect it immediately and return false.
+        let groups = standard_groups();
+        let state = GameState::new();
+        state.set_at_index(Index::new(1), Value::ONE);
+        state.place_and_propagate_at_index(Index::new(0), Value::ONE, &groups);
+
+        assert!(!super::propagate_naked_singles(
+            &state,
+            &groups,
+            Index::new(0)
+        ));
+    }
+
+    #[test]
+    fn propagate_returns_false_when_cascade_creates_impossible_cell() {
+        // Cell 1 (row 0, col 1) is solved to FOUR.
+        // Cell 10 (row 1, col 1) is also solved to FOUR — same column, so they are peers.
+        // Placing FIVE in cell 0 (row 0, col 0) makes cell 1 a solved peer of cell 0.
+        // Cascading from cell 1 removes FOUR from cell 10 → cell 10 becomes impossible.
+        let groups = standard_groups();
+        let state = GameState::new();
+        state.set_at_index(Index::new(1), Value::FOUR);
+        state.set_at_index(Index::new(10), Value::FOUR);
+        state.place_and_propagate_at_index(Index::new(0), Value::FIVE, &groups);
+
+        assert!(!super::propagate_naked_singles(
+            &state,
+            &groups,
+            Index::new(0)
+        ));
+    }
+
+    #[test]
+    fn propagate_returns_true_for_conflict_free_placement() {
+        let groups = standard_groups();
+        let state = GameState::new();
+        state.place_and_propagate_at_index(Index::new(0), Value::ONE, &groups);
+
+        assert!(super::propagate_naked_singles(
+            &state,
+            &groups,
+            Index::new(0)
+        ));
     }
 
     #[test]
