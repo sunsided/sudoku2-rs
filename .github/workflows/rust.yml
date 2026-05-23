@@ -46,7 +46,7 @@ jobs:
       # are incompatible with statically linked libc, so force the gnu target.
       FUZZ_TARGET_TRIPLE: x86_64-unknown-linux-gnu
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly-2026-05-15
@@ -69,7 +69,7 @@ jobs:
         run: cargo fuzz run --target ${{ env.FUZZ_TARGET_TRIPLE }} game_state_ops -- -runs=5000 -max_total_time=30
       - name: Upload crash artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fuzz-artifacts
           path: fuzz/artifacts/
