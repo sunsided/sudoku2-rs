@@ -1,6 +1,6 @@
 use crate::cell_group::{CellGroup, CellGroupType, CellGroups};
 use crate::index::Index;
-use rand::prelude::IndexedRandom;
+use rand::seq::IndexedRandom;
 use rand::Rng;
 
 use super::GridGenerator;
@@ -10,18 +10,18 @@ use super::GridGenerator;
 /// Each layout consists of 9 connected regions of exactly 9 cells each,
 /// covering all 81 cells exactly once. Layouts are verified to support at
 /// least one valid filled Sudoku grid before being returned.
-pub struct NonominiRegionGenerator {
+pub struct NonominoRegionGenerator {
     /// Maximum number of generation attempts before giving up.
     pub max_attempts: usize,
 }
 
-impl Default for NonominiRegionGenerator {
+impl Default for NonominoRegionGenerator {
     fn default() -> Self {
         Self { max_attempts: 200 }
     }
 }
 
-impl NonominiRegionGenerator {
+impl NonominoRegionGenerator {
     pub fn new(max_attempts: usize) -> Self {
         Self { max_attempts }
     }
@@ -50,8 +50,8 @@ impl NonominiRegionGenerator {
 /// Starts from the 9 standard 3x3 blocks (which are always valid: 9 connected
 /// regions of exactly 9 cells each). Repeatedly swaps a boundary cell of
 /// region A with a boundary cell of an adjacent region B, accepting only
-/// swaps that keep both regions connected. After [`NUM_SWAPS`] accepted swaps
-/// the layout is sufficiently randomized.
+/// swaps that keep both regions connected. Performs up to [`NUM_SWAPS`] accepted
+/// swaps; may do fewer if `MAX_ATTEMPTS` candidate swaps are exhausted first.
 ///
 /// This approach guarantees: size invariant (each region always has exactly 9
 /// cells) and connectivity invariant (each region remains connected). No
@@ -179,7 +179,7 @@ fn build_cell_groups(assignment: &[u8; 81]) -> CellGroups {
     let mut groups = CellGroups::default();
 
     for region in 0..9u8 {
-        let mut group = CellGroup::new((region + 1) as usize, CellGroupType::StandardBlock);
+        let mut group = CellGroup::new((region + 1) as usize, CellGroupType::Custom);
         for idx in 0..81u8 {
             if assignment[idx as usize] == region {
                 group.add_index(Index::new(idx));
@@ -209,7 +209,7 @@ mod tests {
 
         let region_groups: Vec<_> = groups
             .iter()
-            .filter(|g| g.group_type == CellGroupType::StandardBlock)
+            .filter(|g| g.group_type == CellGroupType::Custom)
             .collect();
         assert_eq!(region_groups.len(), 9);
         for g in &region_groups {
@@ -235,7 +235,7 @@ mod tests {
 
         for g in groups
             .iter()
-            .filter(|g| g.group_type == CellGroupType::StandardBlock)
+            .filter(|g| g.group_type == CellGroupType::Custom)
         {
             let cells: Vec<usize> = g.iter_indexes().map(|i| *i as usize).collect();
             assert!(is_connected(&cells), "region is not 4-connected");
@@ -250,10 +250,23 @@ mod tests {
     }
 
     #[test]
+    fn generate_returns_none_when_max_attempts_is_zero() {
+        let gen = NonominoRegionGenerator::new(0);
+        let mut rng = make_rng(42);
+        assert!(gen.generate(&mut rng).is_none());
+    }
+
+    #[test]
+    fn new_and_default_set_max_attempts() {
+        assert_eq!(NonominoRegionGenerator::new(42).max_attempts, 42);
+        assert_eq!(NonominoRegionGenerator::default().max_attempts, 200);
+    }
+
+    #[test]
     #[ignore = "Nonomino grid generation is inherently slow in debug builds (many nodes \
                 required). Run with --release or as part of integration testing."]
     fn generated_layout_supports_valid_grid() {
-        let gen = NonominiRegionGenerator::new(200);
+        let gen = NonominoRegionGenerator::new(200);
         let mut rng = make_rng(3);
         let groups = gen.generate(&mut rng).expect("generation should succeed");
         // generate() already verified puzzle-capability via try_generate_limited,

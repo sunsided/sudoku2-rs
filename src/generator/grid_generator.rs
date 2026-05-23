@@ -211,6 +211,35 @@ mod tests {
     }
 
     #[test]
+    fn try_generate_returns_some_for_valid_groups() {
+        let generator = GridGenerator::new(standard_groups());
+        let mut rng = StdRng::seed_from_u64(42);
+        let result = generator.try_generate(&mut rng);
+        assert!(result.is_some());
+        let grid = result.unwrap();
+        assert!(grid.is_solved(&generator.groups));
+        assert!(grid.is_consistent(&generator.groups));
+    }
+
+    #[test]
+    fn try_generate_limited_returns_none_at_zero_budget() {
+        let generator = GridGenerator::new(standard_groups());
+        let mut rng = StdRng::seed_from_u64(42);
+        assert!(generator.try_generate_limited(&mut rng, 0).is_none());
+    }
+
+    #[test]
+    fn try_generate_limited_returns_some_with_large_budget() {
+        let generator = GridGenerator::new(standard_groups());
+        let mut rng = StdRng::seed_from_u64(42);
+        let result = generator.try_generate_limited(&mut rng, 100_000);
+        assert!(result.is_some());
+        let grid = result.unwrap();
+        assert!(grid.is_solved(&generator.groups));
+        assert!(grid.is_consistent(&generator.groups));
+    }
+
+    #[test]
     fn generate_returns_complete_valid_grid() {
         let generator = GridGenerator::new(standard_groups());
         let mut rng = StdRng::seed_from_u64(42);
