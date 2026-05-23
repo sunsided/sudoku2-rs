@@ -28,6 +28,15 @@ pub enum Difficulty {
 /// when the puzzle cannot be solved by any registered strategy without
 /// backtracking.
 ///
+/// # Precondition
+///
+/// `state` must be a valid, uniquely-solvable puzzle. If a strategy reports an
+/// inconsistency (`InvalidGameState`) the loop terminates early, and the result
+/// is [`Difficulty::Extreme`] — the same value returned for puzzles that
+/// genuinely require backtracking. Contradictory inputs are not distinguished
+/// from puzzles that exhaust the strategy set; callers that need to tell them
+/// apart should validate the puzzle first (e.g. via `DefaultSolver::is_unique`).
+///
 /// `state` is not modified.
 pub fn estimate_difficulty(state: &GameState, groups: &CellGroups) -> Difficulty {
     let state = state.clone();
@@ -46,8 +55,8 @@ pub fn estimate_difficulty(state: &GameState, groups: &CellGroups) -> Difficulty
         (HiddenTriples::new_box(true), Difficulty::Hard),
         (NakedQuads::new_box(true), Difficulty::Hard),
         (HiddenQuads::new_box(true), Difficulty::Hard),
-        (XWing::new_box(true), Difficulty::Hard),
         (Skyscraper::new_box(true), Difficulty::Hard),
+        (XWing::new_box(true), Difficulty::Hard),
         (XYWing::new_box(true), Difficulty::Expert),
         (WWing::new_box(true), Difficulty::Expert),
         (UniqueRectangle::new_box(true), Difficulty::Expert),
