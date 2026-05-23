@@ -20,6 +20,7 @@ smallvec = ["dep:smallvec"]
 
 [dependencies]
 log = "0.4.29"
+rand = "0.10.1"
 smallvec = { version = "1.15.1", features = ["union"], optional = true }
 thiserror = "2.0.18"
 
