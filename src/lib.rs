@@ -6,6 +6,7 @@ pub mod example_games;
 mod game;
 mod game_cell;
 mod game_state;
+pub mod generator;
 mod index;
 mod state_stack;
 mod strategies;
