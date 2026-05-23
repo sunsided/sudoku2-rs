@@ -19,6 +19,7 @@ pub use crate::default_solver::{DefaultSolver, DefaultSolverConfig, Unsolvable};
 pub use crate::game::Game;
 pub use crate::game_cell::{GameCell, IndexedGameCell};
 pub use crate::game_state::GameState;
+pub use crate::generator::{ClueDigger, RemovalStrategy, StoppingCondition};
 pub use crate::index::Index;
 pub use crate::index::IndexBitSet;
 pub use crate::value::Value;
