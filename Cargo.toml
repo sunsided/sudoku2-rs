@@ -10,6 +10,10 @@ license = "EUPL-1.2"
 name = "solver"
 path = "examples/solver.rs"
 
+[[example]]
+name = "generate"
+path = "examples/generate.rs"
+
 [[bench]]
 name = "benchmark"
 harness = false

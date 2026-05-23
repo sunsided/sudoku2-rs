@@ -81,10 +81,6 @@ impl Strategy for HiddenSingles {
             }
 
             // Apply each value whose unsolved footprint is exactly one cell.
-            // Placements propagate, but distinct singles inside the same
-            // group must live in distinct cells (otherwise the cell would be
-            // over-constrained and the board inconsistent), so collected hits
-            // never collide.
             for (v_idx, value) in Value::range().enumerate() {
                 if counts[v_idx] != 1 {
                     continue;
@@ -94,6 +90,13 @@ impl Strategy for HiddenSingles {
                     // already placed, no work to do.
                     continue;
                 };
+                // Guard against over-constrained states: if a preceding
+                // placement in this loop already solved this cell to a
+                // different value, the board is contradictory.
+                let cell = state.get_at_index(index);
+                if !cell.contains(value) {
+                    return Err(InvalidGameState {});
+                }
                 if state.place_and_propagate_at_index(index, value, groups) {
                     debug!(
                         "Applied Hidden Single {value:?} at {iut:?}",
@@ -110,5 +113,42 @@ impl Strategy for HiddenSingles {
         } else {
             Ok(StrategyResult::NoChange)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::board_stats::BoardStatsCache;
+    use crate::cell_group::CellGroups;
+    use crate::game_state::GameState;
+    use crate::Coordinate;
+
+    fn forget_at(state: &GameState, x: u8, y: u8, v: Value) {
+        state.forget_at_index(Coordinate::new(x, y).into_index(), v);
+    }
+
+    #[test]
+    fn contradiction_in_group_returns_err() {
+        // Cell (0,0) is the only home for both value 1 and value 2 in row 0.
+        // HiddenSingles will place 1 (solving the cell), then find 2 missing
+        // from that same cell and must return Err rather than panic.
+        let groups = CellGroups::default().with_default_rows_and_columns();
+        let state = GameState::new();
+        for x in 1u8..9 {
+            forget_at(&state, x, 0, Value::ONE);
+            forget_at(&state, x, 0, Value::TWO);
+        }
+        for v in Value::range().skip(2) {
+            forget_at(&state, 0, 0, v);
+        }
+        let stats = BoardStatsCache::new(&state);
+        let result = HiddenSingles::new_box(true).apply_in_group(
+            &state,
+            &groups,
+            &stats,
+            CellGroupType::StandardRow,
+        );
+        assert!(result.is_err());
     }
 }
