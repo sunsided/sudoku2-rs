@@ -1,3 +1,4 @@
+use crate::cell_group::{CellGroupType, CellGroups};
 use crate::game_state::GameState;
 use crate::index::Index;
 use crate::value::Value;
@@ -97,6 +98,32 @@ impl SudokuSerializer {
             result.push('\n');
         }
         result
+    }
+
+    /// Formats the Custom group layout as an 81-character string where each cell
+    /// is encoded as `A`–`I` for its Custom group index (0→A, 1→B, …, 8→I).
+    ///
+    /// Returns `None` if `groups` contains no Custom groups or if Custom groups
+    /// do not cover all 81 cells (e.g. for standard or hypersudoku puzzles).
+    /// For nonomino puzzles, returns `Some` with exactly 81 characters.
+    pub fn format_region_line(groups: &CellGroups) -> Option<String> {
+        let mut map = [u8::MAX; 81];
+        let mut found = false;
+        for (i, group) in groups
+            .iter()
+            .filter(|g| g.group_type == CellGroupType::Custom)
+            .enumerate()
+        {
+            found = true;
+            let letter = b'A' + i as u8;
+            for index in group.iter_indexes() {
+                map[*index as usize] = letter;
+            }
+        }
+        if !found || map.contains(&u8::MAX) {
+            return None;
+        }
+        Some(String::from_utf8(map.to_vec()).expect("A-I are valid UTF-8"))
     }
 
     fn build_state(
@@ -246,6 +273,49 @@ mod tests {
         let state = GameState::new();
         let line = SudokuSerializer::format_line(&state);
         assert_eq!(line, ".".repeat(81));
+    }
+
+    #[test]
+    fn format_region_line_standard_returns_none() {
+        let groups = crate::CellGroups::default()
+            .with_default_sudoku_blocks()
+            .with_default_rows_and_columns();
+        assert!(SudokuSerializer::format_region_line(&groups).is_none());
+    }
+
+    #[test]
+    fn format_region_line_nonomino_returns_81_char_a_to_i_string() {
+        use crate::generator::NonominoRegionGenerator;
+        use rand::rngs::StdRng;
+        use rand::SeedableRng;
+        let mut rng = StdRng::seed_from_u64(1);
+        let groups = loop {
+            if let Some(g) = NonominoRegionGenerator::default().generate(&mut rng) {
+                break g;
+            }
+        };
+        let line = SudokuSerializer::format_region_line(&groups)
+            .expect("nonomino must have complete custom coverage");
+        assert_eq!(line.len(), 81);
+        assert!(line.chars().all(|c| ('A'..='I').contains(&c)));
+        // Each letter appears exactly 9 times (9 regions × 9 cells)
+        for ch in b'A'..=b'I' {
+            let count = line.chars().filter(|&c| c == ch as char).count();
+            assert_eq!(
+                count, 9,
+                "region {} has {count} cells, expected 9",
+                ch as char
+            );
+        }
+    }
+
+    #[test]
+    fn format_region_line_hypersudoku_returns_none() {
+        let groups = crate::CellGroups::default()
+            .with_hypersudoku_windows()
+            .with_default_sudoku_blocks()
+            .with_default_rows_and_columns();
+        assert!(SudokuSerializer::format_region_line(&groups).is_none());
     }
 
     #[test]

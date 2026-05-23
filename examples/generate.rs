@@ -3,7 +3,7 @@ use rand::rngs::StdRng;
 use rand::{RngExt, SeedableRng};
 use std::time::Instant;
 use sudoku2::serialization::SudokuSerializer;
-use sudoku2::visualization::ascii::print_solution;
+use sudoku2::visualization::ascii::{print_nonomino_regions, print_solution_with_regions};
 use sudoku2::*;
 
 fn main() {
@@ -63,9 +63,14 @@ fn main() {
                 elapsed.as_secs_f64()
             );
             println!("\nPuzzle:");
-            print_solution(&puzzle.state);
+            print_solution_with_regions(&puzzle.state, &puzzle.groups);
             println!("\nSolution:");
-            print_solution(&puzzle.solution);
+            print_solution_with_regions(&puzzle.solution, &puzzle.groups);
+            if let Some(region_line) = SudokuSerializer::format_region_line(&puzzle.groups) {
+                println!("\nRegion layout (line): {region_line}");
+                println!("\nRegion layout:");
+                print_nonomino_regions(&puzzle.groups);
+            }
             export_puzzle(&puzzle, format_arg, output_arg);
         }
         Err(GenerationError::MaxAttemptsExceeded {
@@ -82,9 +87,14 @@ fn main() {
                 elapsed.as_secs_f64()
             );
             println!("\nPuzzle:");
-            print_solution(&puzzle.state);
+            print_solution_with_regions(&puzzle.state, &puzzle.groups);
             println!("\nSolution:");
-            print_solution(&puzzle.solution);
+            print_solution_with_regions(&puzzle.solution, &puzzle.groups);
+            if let Some(region_line) = SudokuSerializer::format_region_line(&puzzle.groups) {
+                println!("\nRegion layout (line): {region_line}");
+                println!("\nRegion layout:");
+                print_nonomino_regions(&puzzle.groups);
+            }
             export_puzzle(&puzzle, format_arg, output_arg);
         }
         Err(GenerationError::MaxAttemptsExceeded {
@@ -107,9 +117,15 @@ fn main() {
 /// in line format to that file.
 fn export_puzzle(puzzle: &Puzzle, format_arg: Option<&str>, output_arg: Option<&str>) {
     let line = SudokuSerializer::format_line(&puzzle.state);
+    let region_line = SudokuSerializer::format_region_line(&puzzle.groups);
 
     match format_arg {
-        Some("line") => println!("\nPuzzle (line): {line}"),
+        Some("line") => {
+            println!("\nPuzzle (line): {line}");
+            if let Some(ref r) = region_line {
+                println!("Region (line): {r}");
+            }
+        }
         Some("grid") => {
             println!("\nPuzzle (grid):");
             print!("{}", SudokuSerializer::format_grid(&puzzle.state));
@@ -118,7 +134,11 @@ fn export_puzzle(puzzle: &Puzzle, format_arg: Option<&str>, output_arg: Option<&
     }
 
     if let Some(path) = output_arg {
-        let content = format!("{line}\n");
+        let content = if let Some(ref r) = region_line {
+            format!("{line}\n{r}\n")
+        } else {
+            format!("{line}\n")
+        };
         std::fs::write(path, &content).unwrap_or_else(|e| {
             eprintln!("Error writing to '{path}': {e}");
             std::process::exit(1);
