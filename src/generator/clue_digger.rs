@@ -71,8 +71,16 @@ impl ClueDigger {
 
     /// Stop removing clues when further removal would push difficulty above `target`.
     /// The resulting puzzle will have difficulty at most `target`.
+    ///
+    /// `Difficulty::Extreme` is treated as "no cap" because no estimated value
+    /// can exceed it, so the check is skipped entirely to avoid an unnecessary
+    /// `estimate_difficulty` call after every successful removal.
     pub fn with_target_difficulty(mut self, target: Difficulty) -> Self {
-        self.target_difficulty = Some(target);
+        self.target_difficulty = if target == Difficulty::Extreme {
+            None
+        } else {
+            Some(target)
+        };
         self
     }
 
@@ -292,6 +300,51 @@ mod tests {
                 cells[80 - i]
             );
         }
+    }
+
+    #[test]
+    fn random_with_target_difficulty_caps_estimated_difficulty() {
+        let mut rng = StdRng::seed_from_u64(2026);
+        let solution = make_solution(&mut rng);
+        let digger = ClueDigger::new(&standard_groups()).with_target_difficulty(Difficulty::Easy);
+        let puzzle = digger.dig(
+            &solution,
+            RemovalStrategy::Random,
+            StoppingCondition::Minimal,
+            &mut rng,
+        );
+        let difficulty = estimate_difficulty(&puzzle, &standard_groups());
+        assert!(
+            difficulty <= Difficulty::Easy,
+            "random dig produced {difficulty:?}, expected <= Easy"
+        );
+    }
+
+    #[test]
+    fn symmetric_with_target_difficulty_caps_estimated_difficulty() {
+        let mut rng = StdRng::seed_from_u64(2027);
+        let solution = make_solution(&mut rng);
+        let digger = ClueDigger::new(&standard_groups()).with_target_difficulty(Difficulty::Medium);
+        let puzzle = digger.dig(
+            &solution,
+            RemovalStrategy::Symmetric,
+            StoppingCondition::Minimal,
+            &mut rng,
+        );
+        let difficulty = estimate_difficulty(&puzzle, &standard_groups());
+        assert!(
+            difficulty <= Difficulty::Medium,
+            "symmetric dig produced {difficulty:?}, expected <= Medium"
+        );
+    }
+
+    #[test]
+    fn extreme_target_disables_difficulty_gate() {
+        // Extreme is the maximum tier so the cap can never trigger; the struct
+        // should store None to skip the (otherwise unnecessary) estimate call.
+        let digger =
+            ClueDigger::new(&standard_groups()).with_target_difficulty(Difficulty::Extreme);
+        assert!(digger.target_difficulty.is_none());
     }
 
     #[test]
