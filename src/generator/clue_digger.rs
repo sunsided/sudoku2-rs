@@ -1,5 +1,6 @@
 use crate::cell_group::CellGroups;
 use crate::default_solver::{DefaultSolver, DefaultSolverConfig};
+use crate::difficulty_estimator::{estimate_difficulty, Difficulty};
 use crate::value::Value;
 use crate::GameState;
 use rand::seq::SliceRandom;
@@ -30,8 +31,14 @@ pub enum StoppingCondition {
 ///
 /// Wraps a [`DefaultSolver`] to check uniqueness after each attempted removal.
 /// Cells that would break uniqueness are kept as fixed clues.
+///
+/// When a `target_difficulty` is set via [`ClueDigger::with_target_difficulty`],
+/// removals that push the puzzle above that difficulty are also reverted. This
+/// prevents over-digging and reliably produces puzzles at the target level.
 pub struct ClueDigger {
     solver: DefaultSolver,
+    groups: CellGroups,
+    target_difficulty: Option<Difficulty>,
 }
 
 impl ClueDigger {
@@ -57,7 +64,24 @@ impl ClueDigger {
         };
         Self {
             solver: DefaultSolver::new_with(groups, &config),
+            groups: groups.clone(),
+            target_difficulty: None,
         }
+    }
+
+    /// Stop removing clues when further removal would push difficulty above `target`.
+    /// The resulting puzzle will have difficulty at most `target`.
+    ///
+    /// `Difficulty::Extreme` is treated as "no cap" because no estimated value
+    /// can exceed it, so the check is skipped entirely to avoid an unnecessary
+    /// `estimate_difficulty` call after every successful removal.
+    pub fn with_target_difficulty(mut self, target: Difficulty) -> Self {
+        self.target_difficulty = if target == Difficulty::Extreme {
+            None
+        } else {
+            Some(target)
+        };
+        self
     }
 
     /// Digs clues from `solution`, returning a puzzle [`GameState`] (partial grid).
@@ -83,8 +107,8 @@ impl ClueDigger {
         }
 
         match strategy {
-            RemovalStrategy::Random => self.dig_random(&mut clues, &stop, rng),
-            RemovalStrategy::Symmetric => self.dig_symmetric(&mut clues, &stop, rng),
+            RemovalStrategy::Random => self.dig_random(&mut clues, &stop, rng, solution),
+            RemovalStrategy::Symmetric => self.dig_symmetric(&mut clues, &stop, rng, solution),
         }
 
         Self::state_from_clues(&clues)
@@ -95,6 +119,7 @@ impl ClueDigger {
         clues: &mut [Option<Value>; 81],
         stop: &StoppingCondition,
         rng: &mut R,
+        solution: &GameState,
     ) {
         let mut order: Vec<usize> = (0..81).collect();
         order.shuffle(rng);
@@ -107,8 +132,15 @@ impl ClueDigger {
                 break;
             }
             let saved = clues[idx].take();
-            if !self.solver.is_unique(&Self::state_from_clues(clues)) {
+            let state = Self::state_from_clues(clues);
+            if !self.solver.is_unique_with_hint(&state, solution) {
                 clues[idx] = saved;
+                continue;
+            }
+            if let Some(target) = self.target_difficulty {
+                if estimate_difficulty(&state, &self.groups) > target {
+                    clues[idx] = saved;
+                }
             }
         }
     }
@@ -118,6 +150,7 @@ impl ClueDigger {
         clues: &mut [Option<Value>; 81],
         stop: &StoppingCondition,
         rng: &mut R,
+        solution: &GameState,
     ) {
         // Build pairs (i, 80-i). Index 40 maps to itself (center cell).
         let mut pairs: Vec<(usize, usize)> = (0..40).map(|i| (i, 80 - i)).collect();
@@ -134,10 +167,20 @@ impl ClueDigger {
             let saved_a = clues[a].take();
             let saved_b = if a != b { clues[b].take() } else { None };
 
-            if !self.solver.is_unique(&Self::state_from_clues(clues)) {
+            let state = Self::state_from_clues(clues);
+            if !self.solver.is_unique_with_hint(&state, solution) {
                 clues[a] = saved_a;
                 if a != b {
                     clues[b] = saved_b;
+                }
+                continue;
+            }
+            if let Some(target) = self.target_difficulty {
+                if estimate_difficulty(&state, &self.groups) > target {
+                    clues[a] = saved_a;
+                    if a != b {
+                        clues[b] = saved_b;
+                    }
                 }
             }
         }
@@ -257,6 +300,51 @@ mod tests {
                 cells[80 - i]
             );
         }
+    }
+
+    #[test]
+    fn random_with_target_difficulty_caps_estimated_difficulty() {
+        let mut rng = StdRng::seed_from_u64(2026);
+        let solution = make_solution(&mut rng);
+        let digger = ClueDigger::new(&standard_groups()).with_target_difficulty(Difficulty::Easy);
+        let puzzle = digger.dig(
+            &solution,
+            RemovalStrategy::Random,
+            StoppingCondition::Minimal,
+            &mut rng,
+        );
+        let difficulty = estimate_difficulty(&puzzle, &standard_groups());
+        assert!(
+            difficulty <= Difficulty::Easy,
+            "random dig produced {difficulty:?}, expected <= Easy"
+        );
+    }
+
+    #[test]
+    fn symmetric_with_target_difficulty_caps_estimated_difficulty() {
+        let mut rng = StdRng::seed_from_u64(2027);
+        let solution = make_solution(&mut rng);
+        let digger = ClueDigger::new(&standard_groups()).with_target_difficulty(Difficulty::Medium);
+        let puzzle = digger.dig(
+            &solution,
+            RemovalStrategy::Symmetric,
+            StoppingCondition::Minimal,
+            &mut rng,
+        );
+        let difficulty = estimate_difficulty(&puzzle, &standard_groups());
+        assert!(
+            difficulty <= Difficulty::Medium,
+            "symmetric dig produced {difficulty:?}, expected <= Medium"
+        );
+    }
+
+    #[test]
+    fn extreme_target_disables_difficulty_gate() {
+        // Extreme is the maximum tier so the cap can never trigger; the struct
+        // should store None to skip the (otherwise unnecessary) estimate call.
+        let digger =
+            ClueDigger::new(&standard_groups()).with_target_difficulty(Difficulty::Extreme);
+        assert!(digger.target_difficulty.is_none());
     }
 
     #[test]

@@ -1,5 +1,5 @@
 use crate::board_stats::BoardStatsCache;
-use crate::cell_group::{CellGroups, CollectIndexes};
+use crate::cell_group::CellGroups;
 use crate::game_state::InvalidGameState;
 use crate::index::Index;
 use crate::state_stack::{StateStack, StateStackEntry};
@@ -22,21 +22,6 @@ pub struct DefaultSolver {
 #[derive(Debug, thiserror::Error)]
 #[error("The game is unsolvable")]
 pub struct Unsolvable(pub GameState);
-
-#[derive(Debug)]
-struct SmallestIndex {
-    pub index: Index,
-    pub size: usize,
-}
-
-impl Default for SmallestIndex {
-    fn default() -> Self {
-        Self {
-            index: Index::default(),
-            size: usize::MAX,
-        }
-    }
-}
 
 pub struct DefaultSolverConfig {
     pub hidden_singles: bool,
@@ -215,12 +200,59 @@ impl DefaultSolver {
     /// solution and will eliminate candidates that belong to valid alternative
     /// solutions, producing an incorrect count. It is disabled by default.
     pub fn count_solutions<S: AsRef<GameState>>(&self, state: S, limit: usize) -> usize {
+        self.count_solutions_impl(state.as_ref(), limit, None)
+    }
+
+    /// Like [`count_solutions`] but guides branching toward `hint` (the known
+    /// solution) at each fork. The first DFS path follows the hint, finding the
+    /// known solution in O(cells) forks. Alternative branches are then explored
+    /// to confirm (or deny) uniqueness; constraint propagation prunes them fast.
+    ///
+    /// # Warning
+    ///
+    /// Same caveat as [`count_solutions`]: do not enable
+    /// [`DefaultSolverConfig::unique_rectangle`]. The `UniqueRectangle`
+    /// strategy assumes the puzzle has exactly one solution and will eliminate
+    /// candidates from valid alternative branches, producing an incorrect
+    /// count. The strategy is disabled by default.
+    pub fn count_solutions_with_hint<S: AsRef<GameState>>(
+        &self,
+        state: S,
+        limit: usize,
+        hint: &GameState,
+    ) -> usize {
+        self.count_solutions_impl(state.as_ref(), limit, Some(hint))
+    }
+
+    /// Returns `true` if `state` has exactly one solution.
+    pub fn is_unique<S: AsRef<GameState>>(&self, state: S) -> bool {
+        self.count_solutions(state, 2) == 1
+    }
+
+    /// Like [`is_unique`] but uses solution-guided branching for faster uniqueness
+    /// checking. `hint` must be a fully solved grid consistent with `state`.
+    ///
+    /// # Warning
+    ///
+    /// Same caveat as [`count_solutions`]: do not enable
+    /// [`DefaultSolverConfig::unique_rectangle`]. The strategy can falsely
+    /// rule out a second solution and make a non-unique puzzle look unique.
+    pub fn is_unique_with_hint<S: AsRef<GameState>>(&self, state: S, hint: &GameState) -> bool {
+        self.count_solutions_with_hint(state, 2, hint) == 1
+    }
+
+    fn count_solutions_impl(
+        &self,
+        state: &GameState,
+        limit: usize,
+        hint: Option<&GameState>,
+    ) -> usize {
         if limit == 0 {
             return 0;
         }
 
         let mut count = 0usize;
-        let mut stack = StateStack::new_with(state.as_ref().clone());
+        let mut stack = StateStack::new_with(state.clone());
 
         'stack: while let Some(StateStackEntry { state, .. }) = stack.pop() {
             if !state.is_consistent(&self.groups) {
@@ -253,7 +285,13 @@ impl DefaultSolver {
             };
 
             let fork_cell = state.get_at_index(fork_index);
-            let fork_value = fork_cell.iter_candidates().next().unwrap();
+
+            // When a hint is provided, prefer its value at the fork index so
+            // the first DFS branch follows the known solution.
+            let fork_value = hint
+                .and_then(|h| h.get_at_index(fork_index).iter_candidates().next())
+                .filter(|&v| fork_cell.contains(v))
+                .unwrap_or_else(|| fork_cell.iter_candidates().next().unwrap());
 
             let forked = state.clone();
             forked.place_and_propagate_at_index(fork_index, fork_value, &self.groups);
@@ -266,11 +304,6 @@ impl DefaultSolver {
         }
 
         count
-    }
-
-    /// Returns `true` if `state` has exactly one solution.
-    pub fn is_unique<S: AsRef<GameState>>(&self, state: S) -> bool {
-        self.count_solutions(state, 2) == 1
     }
 
     /// Applies different strategies for solving the board without branching.
@@ -335,50 +368,17 @@ impl DefaultSolver {
     }
 
     fn pick_index_to_fork_from(&self, state: &GameState) -> Option<Index> {
-        // Identify the group with the fewest candidates.
-        // Within that, identify the cell with the fewest options in that group.
-        let mut smallest = SmallestIndex::default();
-
-        for index_under_test in Index::range() {
-            let mut group_size = 0;
-            let mut group_smallest = SmallestIndex::default();
-            for index in self
-                .groups
-                .get_peers_at_index(index_under_test, CollectIndexes::IncludeSelf)
-                .unwrap()
-                .iter()
-            {
-                let index_size = state.get_at_index(index).len();
-
-                // Ignore solved or invalid cells.
-                if index_size <= 1 {
-                    continue;
+        Index::range()
+            .filter_map(|index| {
+                let len = state.get_at_index(index).len();
+                if len > 1 {
+                    Some((index, len))
+                } else {
+                    None
                 }
-
-                // Accumulate the group size and keep track of the smallest index
-                // within that group.
-                group_size += index_size;
-                if index_size < group_smallest.size {
-                    group_smallest = SmallestIndex {
-                        index,
-                        size: index_size,
-                    }
-                }
-            }
-
-            if group_size < smallest.size && group_size > 0 {
-                smallest = SmallestIndex {
-                    index: group_smallest.index,
-                    size: group_size,
-                };
-            }
-        }
-
-        if smallest.size != usize::MAX {
-            Some(smallest.index)
-        } else {
-            None
-        }
+            })
+            .min_by_key(|&(_, len)| len)
+            .map(|(index, _)| index)
     }
 
     fn print_state(&self, state: &GameState) {
@@ -636,5 +636,78 @@ mod tests {
         let game = crate::example_games::nonomino::example_nonomino();
         let solver = DefaultSolver::new(&game);
         assert_eq!(solver.count_solutions(&game.initial_state, 2), 1);
+    }
+
+    #[test]
+    fn count_solutions_with_hint_matches_count_solutions_for_unique_puzzle() {
+        let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+        let solution = solver.solve(&game.initial_state).expect("solvable");
+        assert_eq!(
+            solver.count_solutions_with_hint(&game.initial_state, 2, &solution),
+            solver.count_solutions(&game.initial_state, 2)
+        );
+        assert_eq!(
+            solver.count_solutions_with_hint(&game.initial_state, 2, &solution),
+            1
+        );
+    }
+
+    #[test]
+    fn count_solutions_with_hint_matches_count_solutions_for_near_empty_board() {
+        let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+
+        #[rustfmt::skip]
+        let state = GameState::new_from([
+            1u8, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+              0, 0, 0,  0, 0, 0,  0, 0, 0,
+        ]);
+        let some_solution = solver.solve(&state).expect("near-empty is solvable");
+        // With limit=2 both paths must observe at least 2 solutions.
+        assert_eq!(
+            solver.count_solutions_with_hint(&state, 2, &some_solution),
+            solver.count_solutions(&state, 2)
+        );
+        assert_eq!(
+            solver.count_solutions_with_hint(&state, 2, &some_solution),
+            2
+        );
+    }
+
+    #[test]
+    fn is_unique_with_hint_falls_back_when_hint_inconsistent_with_state() {
+        // Use one puzzle's clues but another puzzle's solution as the hint.
+        // The hint values for clue cells will disagree, so the hint's value
+        // for a forked cell will not appear in the candidate set; the impl
+        // must fall back to the first candidate and still report uniqueness.
+        let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+        let real_solution = solver.solve(&game.initial_state).expect("solvable");
+
+        // Construct a "fake" hint by rotating digits in the real solution. The
+        // result is no longer the puzzle's solution, but the hint API must
+        // still return the correct unique count for the original puzzle.
+        let mut values = [0u8; 81];
+        for (i, idx) in crate::index::Index::range().enumerate() {
+            let cell = real_solution.get_at_index(idx);
+            let v: u8 = cell.iter_candidates().next().unwrap().into();
+            values[i] = (v % 9) + 1;
+        }
+        let fake_hint = GameState::new_from(values);
+        assert!(solver.is_unique_with_hint(&game.initial_state, &fake_hint));
+        assert_eq!(
+            solver.count_solutions_with_hint(&game.initial_state, 2, &fake_hint),
+            1
+        );
     }
 }
