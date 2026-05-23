@@ -2,6 +2,7 @@ use clap::{value_parser, Arg, Command};
 use rand::rngs::StdRng;
 use rand::{RngExt, SeedableRng};
 use std::time::Instant;
+use sudoku2::serialization::SudokuSerializer;
 use sudoku2::visualization::ascii::print_solution;
 use sudoku2::*;
 
@@ -28,6 +29,8 @@ fn main() {
     };
 
     let max_attempts = *matches.get_one::<usize>("attempts").unwrap_or(&200);
+    let format_arg = matches.get_one::<String>("format").map(String::as_str);
+    let output_arg = matches.get_one::<String>("output").map(String::as_str);
 
     let seed = matches
         .get_one::<u64>("seed")
@@ -63,6 +66,7 @@ fn main() {
             print_solution(&puzzle.state);
             println!("\nSolution:");
             print_solution(&puzzle.solution);
+            export_puzzle(&puzzle, format_arg, output_arg);
         }
         Err(GenerationError::MaxAttemptsExceeded {
             attempts,
@@ -81,6 +85,7 @@ fn main() {
             print_solution(&puzzle.state);
             println!("\nSolution:");
             print_solution(&puzzle.solution);
+            export_puzzle(&puzzle, format_arg, output_arg);
         }
         Err(GenerationError::MaxAttemptsExceeded {
             attempts,
@@ -89,6 +94,36 @@ fn main() {
             eprintln!("Failed: no valid puzzle produced in {attempts} attempts.");
             std::process::exit(1);
         }
+    }
+}
+
+/// Prints the serialized puzzle to stdout and/or writes it to a file.
+///
+/// `format_arg` controls stdout output: `"line"` prints an 81-character string,
+/// `"grid"` prints nine lines of nine characters. When `None`, no serialized
+/// output is printed.
+///
+/// `output_arg` is an optional file path. When provided, the puzzle is written
+/// in line format to that file.
+fn export_puzzle(puzzle: &Puzzle, format_arg: Option<&str>, output_arg: Option<&str>) {
+    let line = SudokuSerializer::format_line(&puzzle.state);
+
+    match format_arg {
+        Some("line") => println!("\nPuzzle (line): {line}"),
+        Some("grid") => {
+            println!("\nPuzzle (grid):");
+            print!("{}", SudokuSerializer::format_grid(&puzzle.state));
+        }
+        _ => {}
+    }
+
+    if let Some(path) = output_arg {
+        let content = format!("{line}\n");
+        std::fs::write(path, &content).unwrap_or_else(|e| {
+            eprintln!("Error writing to '{path}': {e}");
+            std::process::exit(1);
+        });
+        println!("Puzzle written to '{path}'.");
     }
 }
 
@@ -131,5 +166,19 @@ fn build_command() -> Command {
                 .help("Maximum generation attempts")
                 .value_parser(value_parser!(usize))
                 .default_value("200"),
+        )
+        .arg(
+            Arg::new("format")
+                .long("format")
+                .short('f')
+                .help("Print puzzle in serialized form: line (81 chars) or grid (9 lines)")
+                .value_name("line|grid"),
+        )
+        .arg(
+            Arg::new("output")
+                .long("output")
+                .short('o')
+                .help("Write puzzle to a file in line format (81 characters)")
+                .value_name("FILE"),
         )
 }

@@ -1,5 +1,6 @@
 use clap::{Arg, ArgGroup, Command};
 use std::time::Instant;
+use sudoku2::serialization::SudokuSerializer;
 use sudoku2::visualization::{
     ascii::{print_game_state, print_solution},
     PrintAscii,
@@ -13,7 +14,9 @@ fn main() {
         .init();
 
     let matches = build_command().get_matches();
-    let game = if matches.get_flag("normal-ht") {
+    let game = if let Some(src) = matches.get_one::<String>("puzzle") {
+        load_puzzle(src)
+    } else if matches.get_flag("normal-ht") {
         example_games::sudoku2::example_sudoku()
     } else if matches.get_flag("normal-xwing") {
         example_games::sudoku_xwings::example_sudoku()
@@ -106,6 +109,44 @@ fn main() {
     );
 }
 
+/// Loads a standard 9x9 Sudoku from a file path or an inline 81-character string.
+///
+/// - If `src` is exactly 81 non-whitespace characters, it is parsed as a line.
+/// - Otherwise `src` is treated as a file path; the file content is parsed as
+///   a line (single 81-char row) or a grid (multi-line with optional separators).
+fn load_puzzle(src: &str) -> Game {
+    let trimmed = src.trim();
+    let state = if trimmed.len() == 81 && trimmed.chars().all(|c| matches!(c, '0'..='9' | '.')) {
+        SudokuSerializer::parse_line(trimmed).unwrap_or_else(|e| {
+            eprintln!("Error parsing inline puzzle: {e}");
+            std::process::exit(1);
+        })
+    } else {
+        let content = std::fs::read_to_string(src).unwrap_or_else(|e| {
+            eprintln!("Error reading '{src}': {e}");
+            std::process::exit(1);
+        });
+        let content = content.trim();
+        let result = if content.len() == 81 && !content.contains('\n') {
+            SudokuSerializer::parse_line(content)
+        } else {
+            SudokuSerializer::parse_grid(content)
+        };
+        result.unwrap_or_else(|e| {
+            eprintln!("Error parsing puzzle from '{src}': {e}");
+            std::process::exit(1);
+        })
+    };
+    let groups = CellGroups::default()
+        .with_default_sudoku_blocks()
+        .with_default_rows_and_columns();
+    Game {
+        initial_state: state,
+        groups,
+        expected_solution: None,
+    }
+}
+
 fn state_str(enabled: bool) -> &'static str {
     if enabled {
         "enabled"
@@ -118,6 +159,18 @@ pub fn build_command() -> Command {
     Command::new("Sudoku Solver Example")
         .version("0.1.0")
         .author("Markus Mayer")
+        .arg(
+            Arg::new("puzzle")
+                .long("puzzle")
+                .short('p')
+                .help(
+                    "Solve a puzzle from a file or an inline 81-character string \
+                     (digits 1-9 for clues, '.' or '0' for empty cells)",
+                )
+                .value_name("PATH_OR_LINE")
+                .help_heading("Game type")
+                .group("type"),
+        )
         .arg(
             Arg::new("normal")
                 .long("sudoku")
