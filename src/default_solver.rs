@@ -349,8 +349,18 @@ impl DefaultSolver {
                         eliminated_candidates,
                     };
 
-                    if placed_cells > 0 {
-                        return Ok(Some(step));
+                    if let (Some(index), Some(value)) = (index, value) {
+                        let single_step_state = before.clone();
+                        single_step_state.place_and_propagate_at_index(index, value, &self.groups);
+                        return Ok(Some(SolverStep {
+                            solved: single_step_state.is_solved(&self.groups),
+                            state: single_step_state,
+                            strategy: step.strategy,
+                            index: Some(index),
+                            value: Some(value),
+                            placed_cells: 1,
+                            eliminated_candidates,
+                        }));
                     }
 
                     last_candidate_step = Some(step);
@@ -517,6 +527,25 @@ fn describe_state_change(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn solve_step_returns_single_visible_placement() {
+        let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+        let step = solver
+            .solve_step(&game.initial_state)
+            .expect("step should be valid")
+            .expect("step should be available");
+
+        let added_values = Index::range()
+            .filter(|&index| {
+                !game.initial_state.get_at_index(index).is_solved()
+                    && step.state.get_at_index(index).is_solved()
+            })
+            .count();
+        assert_eq!(added_values, 1);
+        assert_eq!(step.placed_cells, 1);
+    }
 
     #[test]
     fn solving_sudoku_works() {

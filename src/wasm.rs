@@ -239,11 +239,19 @@ fn solve_step_impl(req: SolveRequest) -> Result<SolveStepResponse, String> {
                     step.strategy, step.eliminated_candidates
                 )),
             };
+            let visible_state = match (step.index, step.value) {
+                (Some(index), Some(value)) => {
+                    let visible = state.clone();
+                    visible.set_at_index(index, value);
+                    visible
+                }
+                _ => state.clone(),
+            };
             Ok(SolveStepResponse {
                 changed: true,
-                solved: step.solved,
-                state_line: SudokuSerializer::format_line(&step.state),
-                state_grid: SudokuSerializer::format_grid(&step.state),
+                solved: visible_state.is_solved(&groups),
+                state_line: SudokuSerializer::format_line(&visible_state),
+                state_grid: SudokuSerializer::format_grid(&visible_state),
                 region_line: SudokuSerializer::format_region_line(&groups),
                 strategy: Some(step.strategy),
                 cell,
@@ -663,6 +671,26 @@ mod tests {
             response.state_line,
             SudokuSerializer::format_line(&game.expected_solution.unwrap())
         );
+    }
+
+    #[test]
+    fn solve_step_response_adds_one_visible_value() {
+        let game = example_games::sudoku::example_sudoku();
+        let initial_line = SudokuSerializer::format_line(&game.initial_state);
+        let req = SolveRequest {
+            puzzle: initial_line.clone(),
+            variant: WasmVariant::Standard,
+            format: PuzzleFormat::Line,
+            region_line: None,
+        };
+
+        let response = solve_step_impl(req).expect("solve step should succeed");
+        let added = initial_line
+            .chars()
+            .zip(response.state_line.chars())
+            .filter(|(before, after)| *before == '.' && *after != '.')
+            .count();
+        assert_eq!(added, 1);
     }
 
     #[test]
