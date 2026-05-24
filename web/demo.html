@@ -11,6 +11,8 @@
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     pre { background: #111; color: #eee; padding: 0.8rem; border-radius: 6px; overflow-x: auto; }
     .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; }
+    .button-row { display: flex; gap: 0.6rem; }
+    .button-row button { margin: 0.3rem 0 0.8rem; }
   </style>
 </head>
 <body>
@@ -39,7 +41,10 @@
     <label for="solve-region">Nonomino region line (A-I, optional unless variant=nonomino)</label>
     <textarea id="solve-region"></textarea>
 
-    <button id="solve-button">Solve</button>
+    <div class="button-row">
+      <button id="solve-button">Solve</button>
+      <button id="solve-clear-button">Clear</button>
+    </div>
     <pre id="solve-output"></pre>
   </section>
 
@@ -73,7 +78,10 @@
     <label for="gen-seed">Seed (optional)</label>
     <input id="gen-seed" type="number" />
 
-    <button id="generate-button">Generate</button>
+    <div class="button-row">
+      <button id="generate-button">Generate</button>
+      <button id="send-to-solver-button">Send to solver</button>
+    </div>
     <pre id="generate-output"></pre>
   </section>
 </div>
