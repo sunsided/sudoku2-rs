@@ -104,6 +104,9 @@ struct GenerationProgressResponse {
     region_line: Option<String>,
     difficulty: Option<String>,
     target_met: Option<bool>,
+    processed_steps: Option<usize>,
+    total_steps: Option<usize>,
+    remaining_clues: Option<usize>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -401,6 +404,27 @@ fn map_generation_progress(progress: GenerationProgress<'_>) -> GenerationProgre
             None,
             None,
         ),
+        GenerationProgress::ClueDiggingProgress {
+            attempt,
+            max_attempts,
+            processed_steps,
+            total_steps,
+            remaining_clues,
+        } => {
+            let mut response = progress_response(
+                "clue_digging",
+                attempt,
+                max_attempts,
+                None,
+                None,
+                None,
+                None,
+            );
+            response.processed_steps = Some(processed_steps);
+            response.total_steps = Some(total_steps);
+            response.remaining_clues = Some(remaining_clues);
+            response
+        }
         GenerationProgress::PuzzleDug {
             attempt,
             max_attempts,
@@ -466,6 +490,9 @@ fn progress_response(
         region_line: groups.and_then(SudokuSerializer::format_region_line),
         difficulty: difficulty.map(|(difficulty, _)| difficulty_name(difficulty).to_string()),
         target_met: difficulty.map(|(_, target_met)| target_met),
+        processed_steps: None,
+        total_steps: None,
+        remaining_clues: None,
     }
 }
 

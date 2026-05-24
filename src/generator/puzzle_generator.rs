@@ -2,7 +2,8 @@ use crate::cell_group::CellGroups;
 use crate::difficulty_estimator::{estimate_difficulty, Difficulty};
 use crate::game_state::GameState;
 use crate::generator::{
-    ClueDigger, GridGenerator, NonominoRegionGenerator, RemovalStrategy, StoppingCondition,
+    ClueDigger, ClueDiggingProgress, GridGenerator, NonominoRegionGenerator, RemovalStrategy,
+    StoppingCondition,
 };
 use rand::Rng;
 
@@ -78,6 +79,14 @@ pub enum GenerationProgress<'a> {
         max_attempts: usize,
         groups: &'a CellGroups,
         solution: &'a GameState,
+    },
+    /// Clue digging is removing givens from the solved grid.
+    ClueDiggingProgress {
+        attempt: usize,
+        max_attempts: usize,
+        processed_steps: usize,
+        total_steps: usize,
+        remaining_clues: usize,
     },
     /// Clue digging has produced a candidate puzzle.
     PuzzleDug {
@@ -170,8 +179,8 @@ impl PuzzleGenerator {
                 max_attempts: self.config.max_attempts,
             });
 
-            let groups = match self.build_groups(rng) {
-                Some(groups) => groups,
+            let (groups, solution) = match self.build_groups_and_solution(rng) {
+                Some(base) => base,
                 None => {
                     on_progress(GenerationProgress::RegionGenerationFailed {
                         attempt,
@@ -185,8 +194,6 @@ impl PuzzleGenerator {
                 max_attempts: self.config.max_attempts,
                 groups: &groups,
             });
-
-            let solution = GridGenerator::new(groups.clone()).generate(rng);
             on_progress(GenerationProgress::SolutionGenerated {
                 attempt,
                 max_attempts: self.config.max_attempts,
@@ -200,7 +207,19 @@ impl PuzzleGenerator {
                 Symmetry::None => RemovalStrategy::Random,
                 Symmetry::Rotational180 => RemovalStrategy::Symmetric,
             };
-            let state = digger.dig(&solution, removal, StoppingCondition::Minimal, rng);
+            let state = digger.dig_with_callback(
+                &solution,
+                removal,
+                StoppingCondition::Minimal,
+                rng,
+                |progress| {
+                    on_progress(map_clue_digging_progress(
+                        attempt,
+                        self.config.max_attempts,
+                        progress,
+                    ));
+                },
+            );
             on_progress(GenerationProgress::PuzzleDug {
                 attempt,
                 max_attempts: self.config.max_attempts,
@@ -246,21 +265,47 @@ impl PuzzleGenerator {
         })
     }
 
+    #[cfg(test)]
     pub(crate) fn build_groups<R: Rng>(&self, rng: &mut R) -> Option<CellGroups> {
+        self.build_groups_and_solution(rng)
+            .map(|(groups, _)| groups)
+    }
+
+    fn build_groups_and_solution<R: Rng>(&self, rng: &mut R) -> Option<(CellGroups, GameState)> {
         match self.config.variant {
-            Variant::Standard => Some(
-                CellGroups::default()
+            Variant::Standard => {
+                let groups = CellGroups::default()
                     .with_default_sudoku_blocks()
-                    .with_default_rows_and_columns(),
-            ),
-            Variant::Hypersudoku => Some(
-                CellGroups::default()
+                    .with_default_rows_and_columns();
+                let solution = GridGenerator::new(groups.clone()).generate(rng);
+                Some((groups, solution))
+            }
+            Variant::Hypersudoku => {
+                let groups = CellGroups::default()
                     .with_hypersudoku_windows()
                     .with_default_sudoku_blocks()
-                    .with_default_rows_and_columns(),
-            ),
-            Variant::Nonomino => NonominoRegionGenerator::default().generate(rng),
+                    .with_default_rows_and_columns();
+                let solution = GridGenerator::new(groups.clone()).generate(rng);
+                Some((groups, solution))
+            }
+            Variant::Nonomino => NonominoRegionGenerator::default()
+                .generate_with_solution(rng)
+                .map(|generated| (generated.groups, generated.solution)),
         }
+    }
+}
+
+fn map_clue_digging_progress(
+    attempt: usize,
+    max_attempts: usize,
+    progress: ClueDiggingProgress,
+) -> GenerationProgress<'static> {
+    GenerationProgress::ClueDiggingProgress {
+        attempt,
+        max_attempts,
+        processed_steps: progress.processed_steps,
+        total_steps: progress.total_steps,
+        remaining_clues: progress.remaining_clues,
     }
 }
 

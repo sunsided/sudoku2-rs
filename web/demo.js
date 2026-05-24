@@ -160,10 +160,15 @@ byId("generate-button").addEventListener("click", () => {
     const message = event.data;
     if (message.type === "progress") {
       const progress = message.progress;
-      setGenerationProgress(progress.attempt, progress.max_attempts);
+      const progressValue = progress.processed_steps ?? progress.attempt;
+      const progressMax = progress.total_steps ?? progress.max_attempts;
+      setGenerationProgress(progressValue, progressMax);
+      const clueText = progress.remaining_clues === undefined
+        ? ""
+        : `, ${progress.remaining_clues} clues left`;
       setStatus(
         "generate-status",
-        `${progress.event.replaceAll("_", " ")} (${progress.attempt}/${progress.max_attempts})`
+        `${progress.event.replaceAll("_", " ")} (${progressValue}/${progressMax}${clueText})`
       );
       if (progress.puzzle_line !== undefined) {
         renderBoard("generate-board", progress.puzzle_line, progress.region_line);

@@ -15,6 +15,11 @@ pub struct NonominoRegionGenerator {
     pub max_attempts: usize,
 }
 
+pub struct GeneratedNonominoRegions {
+    pub groups: CellGroups,
+    pub solution: crate::GameState,
+}
+
 impl Default for NonominoRegionGenerator {
     fn default() -> Self {
         Self { max_attempts: 200 }
@@ -30,15 +35,19 @@ impl NonominoRegionGenerator {
     /// 9 nonomino regions, 9 rows, and 9 columns. Returns `None` if all
     /// attempts are exhausted without a puzzle-capable layout.
     pub fn generate<R: Rng>(&self, rng: &mut R) -> Option<CellGroups> {
+        self.generate_with_solution(rng)
+            .map(|generated| generated.groups)
+    }
+
+    pub fn generate_with_solution<R: Rng>(&self, rng: &mut R) -> Option<GeneratedNonominoRegions> {
         for _ in 0..self.max_attempts {
             let assignment = randomize_regions(rng);
             let groups = build_cell_groups(&assignment);
             // Use a node budget to quickly reject degenerate layouts.
-            if GridGenerator::new(groups.clone())
-                .try_generate_limited(rng, 10_000)
-                .is_some()
+            if let Some(solution) =
+                GridGenerator::new(groups.clone()).try_generate_limited(rng, 10_000)
             {
-                return Some(groups);
+                return Some(GeneratedNonominoRegions { groups, solution });
             }
         }
         None
