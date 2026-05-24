@@ -112,7 +112,7 @@ tasks:
           wasm-pack is required for this task.
           Install it from https://rustwasm.github.io/wasm-pack/installer/
     cmds:
-      - wasm-pack build --target web --features wasm --out-dir pkg
+      - wasm-pack build --target web --features wasm
 
   wasm:demo:
     desc: Build WASM package and run a local demo web server on port 8000
