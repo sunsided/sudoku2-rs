@@ -11,7 +11,7 @@ function asOptionalText(value) {
   return trimmed.length === 0 ? undefined : trimmed;
 }
 
-let generatedForSolver = undefined;
+let lastGeneratedPuzzle = undefined;
 
 await init();
 
@@ -40,24 +40,24 @@ byId("generate-button").addEventListener("click", () => {
       seed: seedText === undefined ? undefined : Number(seedText),
     };
     const response = generate_puzzle(request);
-    generatedForSolver = { response, variant: request.variant };
+    lastGeneratedPuzzle = { response, variant: request.variant };
     setOutput("generate-output", response);
   } catch (error) {
-    generatedForSolver = undefined;
+    lastGeneratedPuzzle = undefined;
     setOutput("generate-output", String(error));
   }
 });
 
 byId("send-to-solver-button").addEventListener("click", () => {
-  if (generatedForSolver === undefined) {
-    setOutput("solve-output", "Generate a puzzle first.");
+  if (lastGeneratedPuzzle === undefined) {
+    setOutput("solve-output", "No puzzle available. Please generate a puzzle first using the Generator section above.");
     return;
   }
 
-  byId("solve-variant").value = generatedForSolver.variant;
+  byId("solve-variant").value = lastGeneratedPuzzle.variant;
   byId("solve-format").value = "line";
-  byId("solve-puzzle").value = generatedForSolver.response.puzzle_line ?? "";
-  byId("solve-region").value = generatedForSolver.response.region_line ?? "";
+  byId("solve-puzzle").value = lastGeneratedPuzzle.response.puzzle_line ?? "";
+  byId("solve-region").value = lastGeneratedPuzzle.response.region_line ?? "";
   setOutput("solve-output", "Loaded generated puzzle into solver input.");
 });
 
