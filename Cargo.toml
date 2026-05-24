@@ -6,6 +6,11 @@ edition = "2021"
 authors = ["Markus Mayer"]
 repository = "https://github.com/sunsided/sudoku2-rs"
 license = "EUPL-1.2"
+keywords = ["sudoku", "solver", "puzzle", "generator", "wasm"]
+categories = ["algorithms", "games", "wasm"]
+
+[profile.release]
+lto = "fat"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
