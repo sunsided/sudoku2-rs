@@ -8,6 +8,7 @@ use crate::strategies::{
     NakedTriples, NakedTwins, Skyscraper, Strategy, StrategyResult, UniqueRectangle, WWing, XWing,
     XYWing,
 };
+use crate::value::Value;
 use crate::GameState;
 use log::{debug, trace};
 
@@ -22,6 +23,17 @@ pub struct DefaultSolver {
 #[derive(Debug, thiserror::Error)]
 #[error("The game is unsolvable")]
 pub struct Unsolvable(pub GameState);
+
+#[derive(Debug, Clone)]
+pub struct SolverStep {
+    pub state: GameState,
+    pub strategy: String,
+    pub index: Option<Index>,
+    pub value: Option<Value>,
+    pub placed_cells: usize,
+    pub eliminated_candidates: usize,
+    pub solved: bool,
+}
 
 pub struct DefaultSolverConfig {
     pub hidden_singles: bool,
@@ -306,6 +318,74 @@ impl DefaultSolver {
         count
     }
 
+    /// Applies one solving step and reports the strategy responsible for it.
+    pub fn solve_step<S: AsRef<GameState>>(
+        &self,
+        state: S,
+    ) -> Result<Option<SolverStep>, InvalidGameState> {
+        let state = state.as_ref().clone();
+        if state.is_solved(&self.groups) {
+            return Ok(None);
+        }
+
+        let stats = BoardStatsCache::new(&state);
+        let mut last_candidate_step = None;
+
+        'solving: loop {
+            for strategy in self.strategies.iter().filter(|&s| s.is_enabled()) {
+                let before = state.clone();
+                let outcome = strategy.apply(&state, &self.groups, &stats)?;
+                if matches!(outcome, StrategyResult::AppliedChange) {
+                    stats.invalidate();
+                    let (index, value, placed_cells, eliminated_candidates) =
+                        describe_state_change(&before, &state);
+                    let step = SolverStep {
+                        solved: state.is_solved(&self.groups),
+                        state: state.clone(),
+                        strategy: format!("{strategy:?}"),
+                        index,
+                        value,
+                        placed_cells,
+                        eliminated_candidates,
+                    };
+
+                    if placed_cells > 0 {
+                        return Ok(Some(step));
+                    }
+
+                    last_candidate_step = Some(step);
+                    continue 'solving;
+                }
+            }
+            break;
+        }
+
+        if let Some(step) = last_candidate_step {
+            return Ok(Some(step));
+        }
+
+        if !state.is_consistent(&self.groups) {
+            return Err(InvalidGameState {});
+        }
+
+        let Some(index) = self.pick_index_to_fork_from(&state) else {
+            return Ok(None);
+        };
+        let Some(value) = state.get_at_index(index).iter_candidates().next() else {
+            return Ok(None);
+        };
+        state.place_and_propagate_at_index(index, value, &self.groups);
+        Ok(Some(SolverStep {
+            solved: state.is_solved(&self.groups),
+            state,
+            strategy: "Guess".to_string(),
+            index: Some(index),
+            value: Some(value),
+            placed_cells: 1,
+            eliminated_candidates: 0,
+        }))
+    }
+
     /// Applies different strategies for solving the board without branching.
     fn apply_strategies(&self, state: &GameState) -> Result<(), InvalidGameState> {
         // Lazy cache for board-wide stats. The first heavy strategy that
@@ -388,6 +468,49 @@ impl DefaultSolver {
         if let Some(print_fn) = self.print_fn {
             print_fn(state);
         }
+    }
+}
+
+fn describe_state_change(
+    before: &GameState,
+    after: &GameState,
+) -> (Option<Index>, Option<Value>, usize, usize) {
+    let mut first_placed = None;
+    let mut placed_cells = 0usize;
+    let mut eliminated_candidates = 0usize;
+
+    for index in Index::range() {
+        let before_cell = before.get_at_index(index);
+        let after_cell = after.get_at_index(index);
+        if before_cell == after_cell {
+            continue;
+        }
+
+        if !before_cell.is_solved() && after_cell.is_solved() {
+            placed_cells += 1;
+            if first_placed.is_none() {
+                first_placed = after_cell
+                    .iter_candidates()
+                    .next()
+                    .map(|value| (index, value));
+            }
+        }
+
+        for value in before_cell.iter_candidates() {
+            if !after_cell.contains(value) {
+                eliminated_candidates += 1;
+            }
+        }
+    }
+
+    match first_placed {
+        Some((index, value)) => (
+            Some(index),
+            Some(value),
+            placed_cells,
+            eliminated_candidates,
+        ),
+        None => (None, None, placed_cells, eliminated_candidates),
     }
 }
 

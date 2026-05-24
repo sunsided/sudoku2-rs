@@ -60,6 +60,48 @@ pub struct Puzzle {
     pub difficulty: Difficulty,
 }
 
+/// Progress event emitted while generating a puzzle.
+pub enum GenerationProgress<'a> {
+    /// A full generation attempt is starting.
+    AttemptStarted { attempt: usize, max_attempts: usize },
+    /// Nonomino region generation failed for this attempt.
+    RegionGenerationFailed { attempt: usize, max_attempts: usize },
+    /// Groups are available for the current attempt.
+    GroupsReady {
+        attempt: usize,
+        max_attempts: usize,
+        groups: &'a CellGroups,
+    },
+    /// A solved grid has been generated for this attempt.
+    SolutionGenerated {
+        attempt: usize,
+        max_attempts: usize,
+        groups: &'a CellGroups,
+        solution: &'a GameState,
+    },
+    /// Clue digging has produced a candidate puzzle.
+    PuzzleDug {
+        attempt: usize,
+        max_attempts: usize,
+        groups: &'a CellGroups,
+        solution: &'a GameState,
+        state: &'a GameState,
+    },
+    /// Difficulty estimation completed for this attempt.
+    AttemptFinished {
+        attempt: usize,
+        max_attempts: usize,
+        puzzle: &'a Puzzle,
+        target_met: bool,
+    },
+    /// The closest puzzle seen so far has been updated.
+    ClosestUpdated {
+        attempt: usize,
+        max_attempts: usize,
+        puzzle: &'a Puzzle,
+    },
+}
+
 /// Error returned when puzzle generation fails.
 #[derive(Debug)]
 pub enum GenerationError {
@@ -105,15 +147,53 @@ impl PuzzleGenerator {
     /// [`GenerationError::MaxAttemptsExceeded`] with the closest match found.
     #[allow(clippy::result_large_err)]
     pub fn generate<R: Rng>(&self, rng: &mut R) -> Result<Puzzle, GenerationError> {
+        self.generate_with_callback(rng, |_| {})
+    }
+
+    /// Generates a puzzle and reports progress through `on_progress`.
+    #[allow(clippy::result_large_err)]
+    pub fn generate_with_callback<R, F>(
+        &self,
+        rng: &mut R,
+        mut on_progress: F,
+    ) -> Result<Puzzle, GenerationError>
+    where
+        R: Rng,
+        F: FnMut(GenerationProgress<'_>),
+    {
         let mut closest: Option<Puzzle> = None;
 
-        for _attempt in 0..self.config.max_attempts {
+        for attempt_index in 0..self.config.max_attempts {
+            let attempt = attempt_index + 1;
+            on_progress(GenerationProgress::AttemptStarted {
+                attempt,
+                max_attempts: self.config.max_attempts,
+            });
+
             let groups = match self.build_groups(rng) {
-                Some(g) => g,
-                None => continue,
+                Some(groups) => groups,
+                None => {
+                    on_progress(GenerationProgress::RegionGenerationFailed {
+                        attempt,
+                        max_attempts: self.config.max_attempts,
+                    });
+                    continue;
+                }
             };
+            on_progress(GenerationProgress::GroupsReady {
+                attempt,
+                max_attempts: self.config.max_attempts,
+                groups: &groups,
+            });
 
             let solution = GridGenerator::new(groups.clone()).generate(rng);
+            on_progress(GenerationProgress::SolutionGenerated {
+                attempt,
+                max_attempts: self.config.max_attempts,
+                groups: &groups,
+                solution: &solution,
+            });
+
             let digger =
                 ClueDigger::new(&groups).with_target_difficulty(self.config.target_difficulty);
             let removal = match self.config.symmetry {
@@ -121,6 +201,14 @@ impl PuzzleGenerator {
                 Symmetry::Rotational180 => RemovalStrategy::Symmetric,
             };
             let state = digger.dig(&solution, removal, StoppingCondition::Minimal, rng);
+            on_progress(GenerationProgress::PuzzleDug {
+                attempt,
+                max_attempts: self.config.max_attempts,
+                groups: &groups,
+                solution: &solution,
+                state: &state,
+            });
+
             let difficulty = estimate_difficulty(&state, &groups);
 
             let puzzle = Puzzle {
@@ -130,11 +218,24 @@ impl PuzzleGenerator {
                 difficulty,
             };
 
-            if difficulty == self.config.target_difficulty {
+            let target_met = difficulty == self.config.target_difficulty;
+            on_progress(GenerationProgress::AttemptFinished {
+                attempt,
+                max_attempts: self.config.max_attempts,
+                puzzle: &puzzle,
+                target_met,
+            });
+
+            if target_met {
                 return Ok(puzzle);
             }
 
             if is_closer(difficulty, self.config.target_difficulty, &closest) {
+                on_progress(GenerationProgress::ClosestUpdated {
+                    attempt,
+                    max_attempts: self.config.max_attempts,
+                    puzzle: &puzzle,
+                });
                 closest = Some(puzzle);
             }
         }

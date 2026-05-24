@@ -7,5 +7,6 @@ pub use clue_digger::{ClueDigger, RemovalStrategy, StoppingCondition};
 pub use grid_generator::GridGenerator;
 pub use nonomino_region_generator::NonominoRegionGenerator;
 pub use puzzle_generator::{
-    GenerationError, Puzzle, PuzzleGenerator, PuzzleGeneratorConfig, Symmetry, Variant,
+    GenerationError, GenerationProgress, Puzzle, PuzzleGenerator, PuzzleGeneratorConfig, Symmetry,
+    Variant,
 };

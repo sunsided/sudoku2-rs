@@ -2,7 +2,8 @@ use crate::cell_group::{CellGroups, WithGroupFromIterator};
 use crate::default_solver::Unsolvable;
 use crate::difficulty_estimator::Difficulty;
 use crate::generator::{
-    GenerationError, PuzzleGenerator, PuzzleGeneratorConfig, Symmetry, Variant,
+    GenerationError, GenerationProgress, Puzzle, PuzzleGenerator, PuzzleGeneratorConfig, Symmetry,
+    Variant,
 };
 use crate::{DefaultSolver, SudokuSerializer};
 use rand::rngs::StdRng;
@@ -68,6 +69,43 @@ struct SolveResponse {
     error: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct SolveStepResponse {
+    changed: bool,
+    solved: bool,
+    state_line: String,
+    state_grid: String,
+    region_line: Option<String>,
+    strategy: Option<String>,
+    cell: Option<WasmCell>,
+    value: Option<u8>,
+    placed_cells: usize,
+    eliminated_candidates: usize,
+    explanation: Option<String>,
+    error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct WasmCell {
+    index: u8,
+    x: u8,
+    y: u8,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct GenerationProgressResponse {
+    event: String,
+    attempt: usize,
+    max_attempts: usize,
+    puzzle_line: Option<String>,
+    puzzle_grid: Option<String>,
+    solution_line: Option<String>,
+    solution_grid: Option<String>,
+    region_line: Option<String>,
+    difficulty: Option<String>,
+    target_met: Option<bool>,
+}
+
 #[derive(Debug, Deserialize)]
 struct GenerateRequest {
     #[serde(default)]
@@ -115,6 +153,32 @@ pub fn generate_puzzle(input: JsValue) -> Result<JsValue, JsValue> {
         .map_err(|e| JsValue::from_str(&format!("failed to serialize generation response: {e}")))
 }
 
+#[wasm_bindgen]
+pub fn generate_puzzle_with_callback(
+    input: JsValue,
+    callback: js_sys::Function,
+) -> Result<JsValue, JsValue> {
+    let req: GenerateRequest = serde_wasm_bindgen::from_value(input)
+        .map_err(|e| JsValue::from_str(&format!("invalid generation request: {e}")))?;
+    let response = generate_puzzle_with_callback_impl(req, |progress| {
+        let value = serde_wasm_bindgen::to_value(&progress)
+            .map_err(|e| JsValue::from_str(&format!("failed to serialize progress: {e}")))?;
+        callback.call1(&JsValue::NULL, &value).map(|_| ())
+    })
+    .map_err(|e| JsValue::from_str(&e))?;
+    serde_wasm_bindgen::to_value(&response)
+        .map_err(|e| JsValue::from_str(&format!("failed to serialize generation response: {e}")))
+}
+
+#[wasm_bindgen]
+pub fn solve_step(input: JsValue) -> Result<JsValue, JsValue> {
+    let req: SolveRequest = serde_wasm_bindgen::from_value(input)
+        .map_err(|e| JsValue::from_str(&format!("invalid solve request: {e}")))?;
+    let response = solve_step_impl(req).map_err(|e| JsValue::from_str(&e))?;
+    serde_wasm_bindgen::to_value(&response)
+        .map_err(|e| JsValue::from_str(&format!("failed to serialize solve-step response: {e}")))
+}
+
 fn solve_puzzle_impl(req: SolveRequest) -> Result<SolveResponse, String> {
     let groups = build_groups(req.variant, req.region_line.as_deref())?;
     let state = parse_state(&req.puzzle, req.format)?;
@@ -138,7 +202,97 @@ fn solve_puzzle_impl(req: SolveRequest) -> Result<SolveResponse, String> {
     }
 }
 
+fn solve_step_impl(req: SolveRequest) -> Result<SolveStepResponse, String> {
+    let groups = build_groups(req.variant, req.region_line.as_deref())?;
+    let state = parse_state(&req.puzzle, req.format)?;
+    let solver = DefaultSolver::new(&groups);
+
+    match solver.solve_step(&state) {
+        Ok(Some(step)) => {
+            let (cell, value) = match (step.index, step.value) {
+                (Some(index), Some(value)) => {
+                    let coord = index.into_coordinate();
+                    (
+                        Some(WasmCell {
+                            index: (*index),
+                            x: coord.x,
+                            y: coord.y,
+                        }),
+                        Some(value.into()),
+                    )
+                }
+                _ => (None, None),
+            };
+            let explanation = match (&cell, value) {
+                (Some(cell), Some(value)) => Some(format!(
+                    "cell {}/{} is {} due to {}",
+                    cell.x + 1,
+                    cell.y + 1,
+                    value,
+                    step.strategy
+                )),
+                _ => Some(format!(
+                    "{} changed {} candidate(s)",
+                    step.strategy, step.eliminated_candidates
+                )),
+            };
+            Ok(SolveStepResponse {
+                changed: true,
+                solved: step.solved,
+                state_line: SudokuSerializer::format_line(&step.state),
+                state_grid: SudokuSerializer::format_grid(&step.state),
+                region_line: SudokuSerializer::format_region_line(&groups),
+                strategy: Some(step.strategy),
+                cell,
+                value,
+                placed_cells: step.placed_cells,
+                eliminated_candidates: step.eliminated_candidates,
+                explanation,
+                error: None,
+            })
+        }
+        Ok(None) => Ok(SolveStepResponse {
+            changed: false,
+            solved: state.is_solved(&groups),
+            state_line: SudokuSerializer::format_line(&state),
+            state_grid: SudokuSerializer::format_grid(&state),
+            region_line: SudokuSerializer::format_region_line(&groups),
+            strategy: None,
+            cell: None,
+            value: None,
+            placed_cells: 0,
+            eliminated_candidates: 0,
+            explanation: Some("No logical step available".to_string()),
+            error: None,
+        }),
+        Err(_) => Ok(SolveStepResponse {
+            changed: false,
+            solved: false,
+            state_line: SudokuSerializer::format_line(&state),
+            state_grid: SudokuSerializer::format_grid(&state),
+            region_line: SudokuSerializer::format_region_line(&groups),
+            strategy: None,
+            cell: None,
+            value: None,
+            placed_cells: 0,
+            eliminated_candidates: 0,
+            explanation: None,
+            error: Some("The puzzle is unsolvable".to_string()),
+        }),
+    }
+}
+
 fn generate_puzzle_impl(req: GenerateRequest) -> Result<GenerateResponse, String> {
+    generate_puzzle_with_callback_impl(req, |_| Ok(()))
+}
+
+fn generate_puzzle_with_callback_impl<F>(
+    req: GenerateRequest,
+    mut on_progress: F,
+) -> Result<GenerateResponse, String>
+where
+    F: FnMut(GenerationProgressResponse) -> Result<(), JsValue>,
+{
     let seed = req.seed.unwrap_or_else(default_seed);
     let mut rng = StdRng::seed_from_u64(seed);
     let target_difficulty = map_difficulty(req.target_difficulty);
@@ -150,39 +304,168 @@ fn generate_puzzle_impl(req: GenerateRequest) -> Result<GenerateResponse, String
         max_attempts: req.max_attempts,
     };
 
-    match PuzzleGenerator::new(config).generate(&mut rng) {
-        Ok(puzzle) => Ok(GenerateResponse {
-            puzzle_line: SudokuSerializer::format_line(&puzzle.state),
-            puzzle_grid: SudokuSerializer::format_grid(&puzzle.state),
-            solution_line: SudokuSerializer::format_line(&puzzle.solution),
-            solution_grid: SudokuSerializer::format_grid(&puzzle.solution),
-            region_line: SudokuSerializer::format_region_line(&puzzle.groups),
-            difficulty: difficulty_name(puzzle.difficulty).to_string(),
-            target_met: true,
-            warning: None,
-        }),
+    match PuzzleGenerator::new(config).generate_with_callback(&mut rng, |progress| {
+        let _ = on_progress(map_generation_progress(progress));
+    }) {
+        Ok(puzzle) => Ok(generate_response_from_puzzle(puzzle, true, None)),
         Err(GenerationError::MaxAttemptsExceeded {
             attempts,
             closest: Some(puzzle),
-        }) => Ok(GenerateResponse {
-            puzzle_line: SudokuSerializer::format_line(&puzzle.state),
-            puzzle_grid: SudokuSerializer::format_grid(&puzzle.state),
-            solution_line: SudokuSerializer::format_line(&puzzle.solution),
-            solution_grid: SudokuSerializer::format_grid(&puzzle.solution),
-            region_line: SudokuSerializer::format_region_line(&puzzle.groups),
-            difficulty: difficulty_name(puzzle.difficulty).to_string(),
-            target_met: puzzle.difficulty == target_difficulty,
-            warning: Some(format!(
-                "target difficulty {} not reached in {attempts} attempts",
-                difficulty_name(target_difficulty)
-            )),
-        }),
+        }) => {
+            let target_met = puzzle.difficulty == target_difficulty;
+            Ok(generate_response_from_puzzle(
+                puzzle,
+                target_met,
+                Some(format!(
+                    "target difficulty {} not reached in {attempts} attempts",
+                    difficulty_name(target_difficulty)
+                )),
+            ))
+        }
         Err(GenerationError::MaxAttemptsExceeded {
             attempts,
             closest: None,
         }) => Err(format!(
             "generation failed after {attempts} attempts without producing a puzzle"
         )),
+    }
+}
+
+fn generate_response_from_puzzle(
+    puzzle: Puzzle,
+    target_met: bool,
+    warning: Option<String>,
+) -> GenerateResponse {
+    GenerateResponse {
+        puzzle_line: SudokuSerializer::format_line(&puzzle.state),
+        puzzle_grid: SudokuSerializer::format_grid(&puzzle.state),
+        solution_line: SudokuSerializer::format_line(&puzzle.solution),
+        solution_grid: SudokuSerializer::format_grid(&puzzle.solution),
+        region_line: SudokuSerializer::format_region_line(&puzzle.groups),
+        difficulty: difficulty_name(puzzle.difficulty).to_string(),
+        target_met,
+        warning,
+    }
+}
+
+fn map_generation_progress(progress: GenerationProgress<'_>) -> GenerationProgressResponse {
+    match progress {
+        GenerationProgress::AttemptStarted {
+            attempt,
+            max_attempts,
+        } => progress_response(
+            "attempt_started",
+            attempt,
+            max_attempts,
+            None,
+            None,
+            None,
+            None,
+        ),
+        GenerationProgress::RegionGenerationFailed {
+            attempt,
+            max_attempts,
+        } => progress_response(
+            "region_generation_failed",
+            attempt,
+            max_attempts,
+            None,
+            None,
+            None,
+            None,
+        ),
+        GenerationProgress::GroupsReady {
+            attempt,
+            max_attempts,
+            groups,
+        } => progress_response(
+            "groups_ready",
+            attempt,
+            max_attempts,
+            Some(groups),
+            None,
+            None,
+            None,
+        ),
+        GenerationProgress::SolutionGenerated {
+            attempt,
+            max_attempts,
+            groups,
+            solution,
+        } => progress_response(
+            "solution_generated",
+            attempt,
+            max_attempts,
+            Some(groups),
+            Some(solution),
+            None,
+            None,
+        ),
+        GenerationProgress::PuzzleDug {
+            attempt,
+            max_attempts,
+            groups,
+            solution,
+            state,
+        } => progress_response(
+            "puzzle_dug",
+            attempt,
+            max_attempts,
+            Some(groups),
+            Some(solution),
+            Some(state),
+            None,
+        ),
+        GenerationProgress::AttemptFinished {
+            attempt,
+            max_attempts,
+            puzzle,
+            target_met,
+        } => progress_response(
+            "attempt_finished",
+            attempt,
+            max_attempts,
+            Some(&puzzle.groups),
+            Some(&puzzle.solution),
+            Some(&puzzle.state),
+            Some((puzzle.difficulty, target_met)),
+        ),
+        GenerationProgress::ClosestUpdated {
+            attempt,
+            max_attempts,
+            puzzle,
+        } => progress_response(
+            "closest_updated",
+            attempt,
+            max_attempts,
+            Some(&puzzle.groups),
+            Some(&puzzle.solution),
+            Some(&puzzle.state),
+            Some((puzzle.difficulty, false)),
+        ),
+    }
+}
+
+fn progress_response(
+    event: &str,
+    attempt: usize,
+    max_attempts: usize,
+    groups: Option<&crate::cell_group::CellGroups>,
+    solution: Option<&crate::GameState>,
+    state: Option<&crate::GameState>,
+    difficulty: Option<(Difficulty, bool)>,
+) -> GenerationProgressResponse {
+    GenerationProgressResponse {
+        event: event.to_string(),
+        attempt,
+        max_attempts,
+        puzzle_line: state.map(SudokuSerializer::format_line),
+        puzzle_grid: state.map(SudokuSerializer::format_grid),
+        solution_line: solution.map(SudokuSerializer::format_line),
+        solution_grid: solution.map(SudokuSerializer::format_grid),
+        region_line: groups.and_then(SudokuSerializer::format_region_line),
+        difficulty: difficulty.map(|(difficulty, _)| difficulty_name(difficulty).to_string()),
+        target_met: difficulty.map(|(_, target_met)| target_met),
     }
 }
 

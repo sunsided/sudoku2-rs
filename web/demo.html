@@ -13,6 +13,22 @@
     .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; }
     .button-row { display: flex; gap: 0.6rem; }
     .button-row button { margin: 0.3rem 0 0.8rem; }
+    .status { min-height: 1.4rem; font-weight: 600; }
+    progress { width: 100%; height: 0.8rem; margin: 0.2rem 0 0.8rem; }
+    progress[hidden] { display: none; }
+    .board-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; margin: 0.5rem 0 0.8rem; }
+    .board-wrap h3 { margin: 0 0 0.35rem; font-size: 0.95rem; }
+    .sudoku-board { display: grid; grid-template-columns: repeat(9, 1fr); width: min(100%, 22rem); aspect-ratio: 1; border: 2px solid #222; background: #222; gap: 1px; }
+    .sudoku-cell { display: grid; place-items: center; min-width: 0; font-size: clamp(0.75rem, 2.2vw, 1.15rem); background: #fff; position: relative; }
+    .sudoku-cell.empty { color: #aaa; }
+    .sudoku-cell.highlight { background: #fff3b0; font-weight: 700; }
+    .sudoku-cell:nth-child(3n) { border-right: 2px solid #222; }
+    .sudoku-cell:nth-child(9n) { border-right: 0; }
+    .sudoku-cell:nth-child(n+19):nth-child(-n+27), .sudoku-cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid #222; }
+    .region-A { background: #f6d6d6; } .region-B { background: #d8ead3; } .region-C { background: #d7e3fc; }
+    .region-D { background: #fff2cc; } .region-E { background: #eadcf8; } .region-F { background: #d0e9e6; }
+    .region-G { background: #fce5cd; } .region-H { background: #ddebf7; } .region-I { background: #e2f0d9; }
+    @media (max-width: 900px) { .grid, .board-row { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -43,7 +59,20 @@
 
     <div class="button-row">
       <button id="solve-button">Solve</button>
-      <button id="solve-clear-button">Clear</button>
+      <button id="solve-step-button">Step</button>
+      <button id="solve-clear-solution-button">Clear solution</button>
+      <button id="solve-reset-button">Reset</button>
+    </div>
+    <div id="solve-status" class="status"></div>
+    <div class="board-row">
+      <div class="board-wrap">
+        <h3>Current</h3>
+        <div id="solve-board" class="sudoku-board"></div>
+      </div>
+      <div class="board-wrap">
+        <h3>Solution</h3>
+        <div id="solve-solution-board" class="sudoku-board"></div>
+      </div>
     </div>
     <pre id="solve-output"></pre>
   </section>
@@ -81,6 +110,18 @@
     <div class="button-row">
       <button id="generate-button">Generate</button>
       <button id="send-to-solver-button">Send to solver</button>
+    </div>
+    <div id="generate-status" class="status"></div>
+    <progress id="generate-progress" value="0" max="1" hidden></progress>
+    <div class="board-row">
+      <div class="board-wrap">
+        <h3>Puzzle</h3>
+        <div id="generate-board" class="sudoku-board"></div>
+      </div>
+      <div class="board-wrap">
+        <h3>Solution</h3>
+        <div id="generate-solution-board" class="sudoku-board"></div>
+      </div>
     </div>
     <pre id="generate-output"></pre>
   </section>
