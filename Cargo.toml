@@ -25,6 +25,7 @@ harness = false
 default = ["smallvec"]
 smallvec = ["dep:smallvec"]
 wasm = [
+    "dep:getrandom",
     "dep:js-sys",
     "dep:serde",
     "dep:serde-wasm-bindgen",
@@ -32,6 +33,7 @@ wasm = [
 ]
 
 [dependencies]
+getrandom = { version = "0.4.2", optional = true, features = ["wasm_js"] }
 js-sys = { version = "0.3.82", optional = true }
 log = "0.4.29"
 rand = "0.10.1"
