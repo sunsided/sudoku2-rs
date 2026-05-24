@@ -72,13 +72,13 @@ Exposed entry points:
 Build the web package:
 
 ```bash
-wasm-pack build --target web --features wasm --out-dir pkg
+task wasm:build
 ```
 
 Run the demo page:
 
 ```bash
-python3 -m http.server
+task wasm:demo
 # open http://localhost:8000/web/demo.html
 ```
 

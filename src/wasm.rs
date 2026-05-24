@@ -10,49 +10,34 @@ use rand::SeedableRng;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 enum WasmVariant {
+    #[default]
     Standard,
     #[serde(alias = "hyper")]
     Hypersudoku,
     Nonomino,
 }
 
-impl Default for WasmVariant {
-    fn default() -> Self {
-        Self::Standard
-    }
-}
-
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 enum WasmDifficulty {
     Easy,
+    #[default]
     Medium,
     Hard,
     Expert,
     Extreme,
 }
 
-impl Default for WasmDifficulty {
-    fn default() -> Self {
-        Self::Medium
-    }
-}
-
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 enum WasmSymmetry {
+    #[default]
     None,
     #[serde(alias = "rot")]
     Rotational,
-}
-
-impl Default for WasmSymmetry {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Default)]
