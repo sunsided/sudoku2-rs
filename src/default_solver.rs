@@ -327,6 +327,9 @@ impl DefaultSolver {
         if state.is_solved(&self.groups) {
             return Ok(None);
         }
+        if !state.is_consistent(&self.groups) {
+            return Err(InvalidGameState {});
+        }
 
         let stats = BoardStatsCache::new(&state);
         let mut last_candidate_step = None;
@@ -352,6 +355,8 @@ impl DefaultSolver {
                     if let (Some(index), Some(value)) = (index, value) {
                         let single_step_state = before.clone();
                         single_step_state.place_and_propagate_at_index(index, value, &self.groups);
+                        let (_, _, _, eliminated_candidates) =
+                            describe_state_change(&before, &single_step_state);
                         return Ok(Some(SolverStep {
                             solved: single_step_state.is_solved(&self.groups),
                             state: single_step_state,

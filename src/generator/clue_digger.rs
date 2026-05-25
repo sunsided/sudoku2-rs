@@ -117,6 +117,27 @@ impl ClueDigger {
         R: Rng,
         F: FnMut(ClueDiggingProgress),
     {
+        match self.try_dig_with_callback(solution, strategy, stop, rng, |progress| {
+            on_progress(progress);
+            Ok::<(), std::convert::Infallible>(())
+        }) {
+            Ok(state) => state,
+            Err(err) => match err {},
+        }
+    }
+
+    pub fn try_dig_with_callback<R, F, E>(
+        &self,
+        solution: &GameState,
+        strategy: RemovalStrategy,
+        stop: StoppingCondition,
+        rng: &mut R,
+        mut on_progress: F,
+    ) -> Result<GameState, E>
+    where
+        R: Rng,
+        F: FnMut(ClueDiggingProgress) -> Result<(), E>,
+    {
         debug_assert!(
             solution.iter_indexed().all(|c| c.is_solved()),
             "solution must be a fully solved grid"
@@ -130,24 +151,27 @@ impl ClueDigger {
 
         match strategy {
             RemovalStrategy::Random => {
-                self.dig_random(&mut clues, &stop, rng, solution, &mut on_progress)
+                self.dig_random(&mut clues, &stop, rng, solution, &mut on_progress)?;
             }
             RemovalStrategy::Symmetric => {
-                self.dig_symmetric(&mut clues, &stop, rng, solution, &mut on_progress)
+                self.dig_symmetric(&mut clues, &stop, rng, solution, &mut on_progress)?;
             }
         }
 
-        Self::state_from_clues(&clues)
+        Ok(Self::state_from_clues(&clues))
     }
 
-    fn dig_random<R: Rng, F: FnMut(ClueDiggingProgress)>(
+    fn dig_random<R: Rng, F, E>(
         &self,
         clues: &mut [Option<Value>; 81],
         stop: &StoppingCondition,
         rng: &mut R,
         solution: &GameState,
         on_progress: &mut F,
-    ) {
+    ) -> Result<(), E>
+    where
+        F: FnMut(ClueDiggingProgress) -> Result<(), E>,
+    {
         let mut order: Vec<usize> = (0..81).collect();
         order.shuffle(rng);
 
@@ -168,21 +192,25 @@ impl ClueDigger {
                 processed_steps: processed + 1,
                 total_steps,
                 remaining_clues: clue_count(clues),
-            });
+            })?;
             if self.should_stop(clues, stop) {
                 break;
             }
         }
+        Ok(())
     }
 
-    fn dig_symmetric<R: Rng, F: FnMut(ClueDiggingProgress)>(
+    fn dig_symmetric<R: Rng, F, E>(
         &self,
         clues: &mut [Option<Value>; 81],
         stop: &StoppingCondition,
         rng: &mut R,
         solution: &GameState,
         on_progress: &mut F,
-    ) {
+    ) -> Result<(), E>
+    where
+        F: FnMut(ClueDiggingProgress) -> Result<(), E>,
+    {
         // Build pairs (i, 80-i). Index 40 maps to itself (center cell).
         let mut pairs: Vec<(usize, usize)> = (0..40).map(|i| (i, 80 - i)).collect();
         pairs.push((40, 40));
@@ -213,11 +241,12 @@ impl ClueDigger {
                 processed_steps: processed + 1,
                 total_steps,
                 remaining_clues: clue_count(clues),
-            });
+            })?;
             if self.should_stop(clues, stop) {
                 break;
             }
         }
+        Ok(())
     }
 
     fn should_stop(&self, clues: &[Option<Value>; 81], stop: &StoppingCondition) -> bool {

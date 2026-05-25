@@ -113,6 +113,7 @@ pub enum GenerationProgress<'a> {
 
 /// Error returned when puzzle generation fails.
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum GenerationError {
     /// All attempts exhausted without hitting the target difficulty.
     /// `closest` holds the best puzzle found (if any valid puzzle was produced).
@@ -120,6 +121,8 @@ pub enum GenerationError {
         attempts: usize,
         closest: Option<Puzzle>,
     },
+    /// A progress callback requested generation to stop.
+    ProgressCallbackFailed,
 }
 
 impl std::fmt::Display for GenerationError {
@@ -132,11 +135,18 @@ impl std::fmt::Display for GenerationError {
                 }
                 Ok(())
             }
+            GenerationError::ProgressCallbackFailed => {
+                write!(f, "progress callback failed")
+            }
         }
     }
 }
 
 impl std::error::Error for GenerationError {}
+
+/// Lightweight signal returned by progress callbacks to abort generation.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct ProgressCallbackError;
 
 /// Generates Sudoku puzzles by orchestrating grid generation, clue digging,
 /// and difficulty estimation.
@@ -156,7 +166,7 @@ impl PuzzleGenerator {
     /// [`GenerationError::MaxAttemptsExceeded`] with the closest match found.
     #[allow(clippy::result_large_err)]
     pub fn generate<R: Rng>(&self, rng: &mut R) -> Result<Puzzle, GenerationError> {
-        self.generate_with_callback(rng, |_| {})
+        self.generate_with_callback(rng, |_| Ok(()))
     }
 
     /// Generates a puzzle and reports progress through `on_progress`.
@@ -168,7 +178,7 @@ impl PuzzleGenerator {
     ) -> Result<Puzzle, GenerationError>
     where
         R: Rng,
-        F: FnMut(GenerationProgress<'_>),
+        F: FnMut(GenerationProgress<'_>) -> Result<(), ProgressCallbackError>,
     {
         let mut closest: Option<Puzzle> = None;
 
@@ -177,7 +187,8 @@ impl PuzzleGenerator {
             on_progress(GenerationProgress::AttemptStarted {
                 attempt,
                 max_attempts: self.config.max_attempts,
-            });
+            })
+            .map_err(|_| GenerationError::ProgressCallbackFailed)?;
 
             let (groups, solution) = match self.build_groups_and_solution(rng) {
                 Some(base) => base,
@@ -185,7 +196,8 @@ impl PuzzleGenerator {
                     on_progress(GenerationProgress::RegionGenerationFailed {
                         attempt,
                         max_attempts: self.config.max_attempts,
-                    });
+                    })
+                    .map_err(|_| GenerationError::ProgressCallbackFailed)?;
                     continue;
                 }
             };
@@ -193,13 +205,15 @@ impl PuzzleGenerator {
                 attempt,
                 max_attempts: self.config.max_attempts,
                 groups: &groups,
-            });
+            })
+            .map_err(|_| GenerationError::ProgressCallbackFailed)?;
             on_progress(GenerationProgress::SolutionGenerated {
                 attempt,
                 max_attempts: self.config.max_attempts,
                 groups: &groups,
                 solution: &solution,
-            });
+            })
+            .map_err(|_| GenerationError::ProgressCallbackFailed)?;
 
             let digger =
                 ClueDigger::new(&groups).with_target_difficulty(self.config.target_difficulty);
@@ -207,26 +221,29 @@ impl PuzzleGenerator {
                 Symmetry::None => RemovalStrategy::Random,
                 Symmetry::Rotational180 => RemovalStrategy::Symmetric,
             };
-            let state = digger.dig_with_callback(
-                &solution,
-                removal,
-                StoppingCondition::Minimal,
-                rng,
-                |progress| {
-                    on_progress(map_clue_digging_progress(
-                        attempt,
-                        self.config.max_attempts,
-                        progress,
-                    ));
-                },
-            );
+            let state = digger
+                .try_dig_with_callback(
+                    &solution,
+                    removal,
+                    StoppingCondition::Minimal,
+                    rng,
+                    |progress| {
+                        on_progress(map_clue_digging_progress(
+                            attempt,
+                            self.config.max_attempts,
+                            progress,
+                        ))
+                    },
+                )
+                .map_err(|_| GenerationError::ProgressCallbackFailed)?;
             on_progress(GenerationProgress::PuzzleDug {
                 attempt,
                 max_attempts: self.config.max_attempts,
                 groups: &groups,
                 solution: &solution,
                 state: &state,
-            });
+            })
+            .map_err(|_| GenerationError::ProgressCallbackFailed)?;
 
             let difficulty = estimate_difficulty(&state, &groups);
 
@@ -243,7 +260,8 @@ impl PuzzleGenerator {
                 max_attempts: self.config.max_attempts,
                 puzzle: &puzzle,
                 target_met,
-            });
+            })
+            .map_err(|_| GenerationError::ProgressCallbackFailed)?;
 
             if target_met {
                 return Ok(puzzle);
@@ -254,7 +272,8 @@ impl PuzzleGenerator {
                     attempt,
                     max_attempts: self.config.max_attempts,
                     puzzle: &puzzle,
-                });
+                })
+                .map_err(|_| GenerationError::ProgressCallbackFailed)?;
                 closest = Some(puzzle);
             }
         }
@@ -427,6 +446,9 @@ mod tests {
             Err(GenerationError::MaxAttemptsExceeded { closest: None, .. }) => {
                 panic!("no hypersudoku puzzle produced in 10 attempts")
             }
+            Err(GenerationError::ProgressCallbackFailed) => {
+                panic!("progress callback should not fail")
+            }
         };
         assert_valid_puzzle(&puzzle);
     }
@@ -479,6 +501,7 @@ mod tests {
                 }
             };
             events.push(name);
+            Ok(())
         });
 
         assert!(events.contains(&"attempt_started"));
@@ -487,6 +510,28 @@ mod tests {
         assert!(events.contains(&"clue_digging"));
         assert!(events.contains(&"puzzle_dug"));
         assert!(events.contains(&"attempt_finished"));
+    }
+
+    #[test]
+    fn generate_with_callback_aborts_on_progress_error() {
+        let mut rng = StdRng::seed_from_u64(42);
+        let config = PuzzleGeneratorConfig {
+            variant: Variant::Standard,
+            target_difficulty: Difficulty::Easy,
+            symmetry: Symmetry::None,
+            max_attempts: 1,
+        };
+        let mut events = 0usize;
+        let result = PuzzleGenerator::new(config).generate_with_callback(&mut rng, |_| {
+            events += 1;
+            Err(ProgressCallbackError)
+        });
+
+        assert!(matches!(
+            result,
+            Err(GenerationError::ProgressCallbackFailed)
+        ));
+        assert_eq!(events, 1);
     }
 
     #[test]
@@ -508,6 +553,9 @@ mod tests {
                     "closest should be populated after a valid attempt"
                 );
             }
+            Err(GenerationError::ProgressCallbackFailed) => {
+                panic!("progress callback should not fail")
+            }
         }
     }
 
@@ -518,6 +566,10 @@ mod tests {
             closest: None,
         };
         assert!(err.to_string().contains("42"));
+        assert_eq!(
+            GenerationError::ProgressCallbackFailed.to_string(),
+            "progress callback failed"
+        );
     }
 
     #[test]

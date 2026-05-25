@@ -2,8 +2,8 @@ use crate::cell_group::{CellGroups, WithGroupFromIterator};
 use crate::default_solver::Unsolvable;
 use crate::difficulty_estimator::Difficulty;
 use crate::generator::{
-    GenerationError, GenerationProgress, Puzzle, PuzzleGenerator, PuzzleGeneratorConfig, Symmetry,
-    Variant,
+    GenerationError, GenerationProgress, ProgressCallbackError, Puzzle, PuzzleGenerator,
+    PuzzleGeneratorConfig, Symmetry, Variant,
 };
 use crate::{DefaultSolver, SudokuSerializer};
 use rand::rngs::StdRng;
@@ -165,8 +165,14 @@ pub fn generate_puzzle_with_callback(
         .map_err(|e| JsValue::from_str(&format!("invalid generation request: {e}")))?;
     let response = generate_puzzle_with_callback_impl(req, |progress| {
         let value = serde_wasm_bindgen::to_value(&progress)
-            .map_err(|e| JsValue::from_str(&format!("failed to serialize progress: {e}")))?;
-        callback.call1(&JsValue::NULL, &value).map(|_| ())
+            .map_err(|e| format!("failed to serialize progress: {e}"))?;
+        callback
+            .call1(&JsValue::NULL, &value)
+            .map(|_| ())
+            .map_err(|e| {
+                e.as_string()
+                    .unwrap_or_else(|| "progress callback failed".to_string())
+            })
     })
     .map_err(|e| JsValue::from_str(&e))?;
     serde_wasm_bindgen::to_value(&response)
@@ -288,7 +294,7 @@ fn solve_step_impl(req: SolveRequest) -> Result<SolveStepResponse, String> {
             placed_cells: 0,
             eliminated_candidates: 0,
             explanation: None,
-            error: Some("The puzzle is unsolvable".to_string()),
+            error: Some("The puzzle has an invalid game state".to_string()),
         }),
     }
 }
@@ -302,7 +308,7 @@ fn generate_puzzle_with_callback_impl<F>(
     mut on_progress: F,
 ) -> Result<GenerateResponse, String>
 where
-    F: FnMut(GenerationProgressResponse) -> Result<(), JsValue>,
+    F: FnMut(GenerationProgressResponse) -> Result<(), String>,
 {
     let seed = req.seed.unwrap_or_else(default_seed);
     let mut rng = StdRng::seed_from_u64(seed);
@@ -315,9 +321,17 @@ where
         max_attempts: req.max_attempts,
     };
 
-    match PuzzleGenerator::new(config).generate_with_callback(&mut rng, |progress| {
-        let _ = on_progress(map_generation_progress(progress));
-    }) {
+    let mut progress_error = None;
+    match PuzzleGenerator::new(config).generate_with_callback(
+        &mut rng,
+        |progress| match on_progress(map_generation_progress(progress)) {
+            Ok(()) => Ok(()),
+            Err(err) => {
+                progress_error = Some(err);
+                Err(ProgressCallbackError)
+            }
+        },
+    ) {
         Ok(puzzle) => Ok(generate_response_from_puzzle(puzzle, true, None)),
         Err(GenerationError::MaxAttemptsExceeded {
             attempts,
@@ -339,6 +353,9 @@ where
         }) => Err(format!(
             "generation failed after {attempts} attempts without producing a puzzle"
         )),
+        Err(GenerationError::ProgressCallbackFailed) => {
+            Err(progress_error.unwrap_or_else(|| "progress callback failed".to_string()))
+        }
     }
 }
 
@@ -769,6 +786,26 @@ mod tests {
     }
 
     #[test]
+    fn solve_step_response_reports_invalid_state() {
+        let mut puzzle = [0u8; 81];
+        puzzle[0] = 1;
+        puzzle[1] = 1;
+        let req = SolveRequest {
+            puzzle: SudokuSerializer::format_line(&crate::GameState::new_from(puzzle)),
+            variant: WasmVariant::Standard,
+            format: PuzzleFormat::Line,
+            region_line: None,
+        };
+
+        let response = solve_step_impl(req).expect("invalid state should serialize response");
+        assert!(!response.changed);
+        assert_eq!(
+            response.error.as_deref(),
+            Some("The puzzle has an invalid game state")
+        );
+    }
+
+    #[test]
     fn generation_progress_serializes_clue_digging_details() {
         let response = map_generation_progress(GenerationProgress::ClueDiggingProgress {
             attempt: 2,
@@ -810,6 +847,26 @@ mod tests {
         assert!(events.contains(&"clue_digging".to_string()));
         assert!(events.contains(&"puzzle_dug".to_string()));
         assert!(events.contains(&"attempt_finished".to_string()));
+    }
+
+    #[test]
+    fn generate_with_callback_propagates_progress_errors() {
+        let req = GenerateRequest {
+            variant: WasmVariant::Standard,
+            target_difficulty: WasmDifficulty::Easy,
+            symmetry: WasmSymmetry::None,
+            max_attempts: 1,
+            seed: Some(42),
+        };
+        let mut events = 0usize;
+        let err = generate_puzzle_with_callback_impl(req, |_| {
+            events += 1;
+            Err("callback failed".to_string())
+        })
+        .expect_err("callback errors should abort generation");
+
+        assert_eq!(err, "callback failed");
+        assert_eq!(events, 1);
     }
 
     #[test]

@@ -67,7 +67,9 @@ The crate now ships an opt-in WASM interface behind the `wasm` feature.
 Exposed entry points:
 
 - `solve_puzzle(input)` for one-shot solving of Sudoku / Hypersudoku / Nonomino puzzles.
-- `generate_puzzle(input)` for background-style generation (single call, no callbacks yet).
+- `solve_step(input)` for incremental solving feedback such as the changed cell, value, and strategy.
+- `generate_puzzle(input)` for one-shot puzzle generation.
+- `generate_puzzle_with_callback(input, callback)` for progress-aware generation; the demo runs this from a Web Worker so long Nonomino attempts do not block the browser.
 
 Build the web package:
 

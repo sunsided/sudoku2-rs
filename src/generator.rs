@@ -7,6 +7,6 @@ pub use clue_digger::{ClueDigger, ClueDiggingProgress, RemovalStrategy, Stopping
 pub use grid_generator::GridGenerator;
 pub use nonomino_region_generator::NonominoRegionGenerator;
 pub use puzzle_generator::{
-    GenerationError, GenerationProgress, Puzzle, PuzzleGenerator, PuzzleGeneratorConfig, Symmetry,
-    Variant,
+    GenerationError, GenerationProgress, ProgressCallbackError, Puzzle, PuzzleGenerator,
+    PuzzleGeneratorConfig, Symmetry, Variant,
 };
