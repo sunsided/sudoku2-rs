@@ -5,20 +5,32 @@ const packageRoot = path.resolve(process.argv[2] ?? "pkg/npm");
 const repoRoot = process.cwd();
 
 const targets = ["bundler", "nodejs", "web"];
+const targetPackages = new Map();
 
 async function readPackageJson(target) {
   const packageJsonPath = path.join(packageRoot, target, "package.json");
   return JSON.parse(await readFile(packageJsonPath, "utf8"));
 }
 
+function targetEntry(target, field) {
+  const packageJson = targetPackages.get(target);
+  const entry = packageJson?.[field];
+
+  if (typeof entry !== "string" || entry.length === 0) {
+    throw new Error(`${target} package.json does not define ${field}`);
+  }
+
+  return `./${target}/${entry.replace(/^\.\//, "")}`;
+}
+
 for (const target of targets) {
-  await readPackageJson(target);
+  targetPackages.set(target, await readPackageJson(target));
   for (const generatedMetadata of [".gitignore", "LICENSE.md", "README.md"]) {
     await rm(path.join(packageRoot, target, generatedMetadata), { force: true });
   }
 }
 
-const bundlerPackage = await readPackageJson("bundler");
+const bundlerPackage = targetPackages.get("bundler");
 
 const packageJson = {
   name: bundlerPackage.name,
@@ -35,35 +47,35 @@ const packageJson = {
     "LICENSE.md",
     "README.md",
   ],
-  main: "./nodejs/sudoku2.js",
-  module: "./bundler/sudoku2.js",
-  types: "./bundler/sudoku2.d.ts",
+  main: targetEntry("nodejs", "main"),
+  module: targetEntry("bundler", "main"),
+  types: targetEntry("bundler", "types"),
   exports: {
     ".": {
-      types: "./bundler/sudoku2.d.ts",
+      types: targetEntry("bundler", "types"),
       node: {
-        types: "./nodejs/sudoku2.d.ts",
-        import: "./nodejs/sudoku2.js",
-        require: "./nodejs/sudoku2.js",
-        default: "./nodejs/sudoku2.js",
+        types: targetEntry("nodejs", "types"),
+        import: targetEntry("nodejs", "main"),
+        require: targetEntry("nodejs", "main"),
+        default: targetEntry("nodejs", "main"),
       },
-      import: "./bundler/sudoku2.js",
-      default: "./bundler/sudoku2.js",
+      import: targetEntry("bundler", "main"),
+      default: targetEntry("bundler", "main"),
     },
     "./bundler": {
-      types: "./bundler/sudoku2.d.ts",
-      import: "./bundler/sudoku2.js",
-      default: "./bundler/sudoku2.js",
+      types: targetEntry("bundler", "types"),
+      import: targetEntry("bundler", "main"),
+      default: targetEntry("bundler", "main"),
     },
     "./nodejs": {
-      types: "./nodejs/sudoku2.d.ts",
-      require: "./nodejs/sudoku2.js",
-      default: "./nodejs/sudoku2.js",
+      types: targetEntry("nodejs", "types"),
+      require: targetEntry("nodejs", "main"),
+      default: targetEntry("nodejs", "main"),
     },
     "./web": {
-      types: "./web/sudoku2.d.ts",
-      import: "./web/sudoku2.js",
-      default: "./web/sudoku2.js",
+      types: targetEntry("web", "types"),
+      import: targetEntry("web", "main"),
+      default: targetEntry("web", "main"),
     },
     "./package.json": "./package.json",
   },

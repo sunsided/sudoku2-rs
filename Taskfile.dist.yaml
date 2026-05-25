@@ -153,13 +153,14 @@ tasks:
       - npm publish ./pkg/npm --access public
 
   npm:publish:github:
-    desc: Explicitly publish ./pkg/npm to GitHub Packages (requires npm auth and usually NPM_SCOPE)
-    deps:
-      - npm:build
+    desc: Explicitly publish ./pkg/npm to GitHub Packages (requires npm auth and NPM_SCOPE)
     preconditions:
       - sh: command -v npm >/dev/null 2>&1
         msg: npm is required to publish the generated package.
+      - sh: test -n "${NPM_SCOPE:-}"
+        msg: NPM_SCOPE is required because GitHub Packages only accepts scoped npm packages.
     cmds:
+      - task: npm:build
       - npm publish ./pkg/npm --registry=https://npm.pkg.github.com
 
   wasm:demo:
