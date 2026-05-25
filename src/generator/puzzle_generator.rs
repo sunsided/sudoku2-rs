@@ -432,6 +432,64 @@ mod tests {
     }
 
     #[test]
+    fn generate_with_callback_reports_generation_phases() {
+        let mut rng = StdRng::seed_from_u64(42);
+        let config = PuzzleGeneratorConfig {
+            variant: Variant::Standard,
+            target_difficulty: Difficulty::Easy,
+            symmetry: Symmetry::None,
+            max_attempts: 1,
+        };
+        let mut events = Vec::new();
+        let _ = PuzzleGenerator::new(config).generate_with_callback(&mut rng, |event| {
+            let name = match event {
+                GenerationProgress::AttemptStarted { .. } => "attempt_started",
+                GenerationProgress::RegionGenerationFailed { .. } => "region_failed",
+                GenerationProgress::GroupsReady { groups, .. } => {
+                    assert!(groups.iter().count() >= 27);
+                    "groups_ready"
+                }
+                GenerationProgress::SolutionGenerated {
+                    solution, groups, ..
+                } => {
+                    assert!(solution.is_solved(groups));
+                    "solution_generated"
+                }
+                GenerationProgress::ClueDiggingProgress {
+                    processed_steps,
+                    total_steps,
+                    remaining_clues,
+                    ..
+                } => {
+                    assert!(processed_steps <= total_steps);
+                    assert!(remaining_clues <= 81);
+                    "clue_digging"
+                }
+                GenerationProgress::PuzzleDug { state, .. } => {
+                    assert!(state.iter_indexed().any(|c| !c.is_solved()));
+                    "puzzle_dug"
+                }
+                GenerationProgress::AttemptFinished { puzzle, .. } => {
+                    assert_valid_puzzle(puzzle);
+                    "attempt_finished"
+                }
+                GenerationProgress::ClosestUpdated { puzzle, .. } => {
+                    assert_valid_puzzle(puzzle);
+                    "closest_updated"
+                }
+            };
+            events.push(name);
+        });
+
+        assert!(events.contains(&"attempt_started"));
+        assert!(events.contains(&"groups_ready"));
+        assert!(events.contains(&"solution_generated"));
+        assert!(events.contains(&"clue_digging"));
+        assert!(events.contains(&"puzzle_dug"));
+        assert!(events.contains(&"attempt_finished"));
+    }
+
+    #[test]
     fn max_attempts_exceeded_returns_closest() {
         let mut rng = StdRng::seed_from_u64(99);
         let config = PuzzleGeneratorConfig {

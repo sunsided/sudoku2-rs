@@ -277,6 +277,60 @@ mod tests {
     }
 
     #[test]
+    fn random_dig_reports_progress() {
+        let mut rng = StdRng::seed_from_u64(700);
+        let solution = make_solution(&mut rng);
+        let digger = ClueDigger::new(&standard_groups());
+        let mut progress = Vec::new();
+        let puzzle = digger.dig_with_callback(
+            &solution,
+            RemovalStrategy::Random,
+            StoppingCondition::ClueCount(80),
+            &mut rng,
+            |event| {
+                progress.push((
+                    event.processed_steps,
+                    event.total_steps,
+                    event.remaining_clues,
+                ))
+            },
+        );
+
+        assert!(!progress.is_empty());
+        assert_eq!(progress[0].0, 1);
+        assert_eq!(progress[0].1, 81);
+        assert!(progress[0].2 <= 80);
+        assert!(puzzle.iter_indexed().filter(|c| c.is_solved()).count() <= 80);
+    }
+
+    #[test]
+    fn symmetric_dig_reports_pair_progress() {
+        let mut rng = StdRng::seed_from_u64(701);
+        let solution = make_solution(&mut rng);
+        let digger = ClueDigger::new(&standard_groups());
+        let mut last = None;
+        let puzzle = digger.dig_with_callback(
+            &solution,
+            RemovalStrategy::Symmetric,
+            StoppingCondition::ClueCount(80),
+            &mut rng,
+            |event| {
+                last = Some((
+                    event.processed_steps,
+                    event.total_steps,
+                    event.remaining_clues,
+                ))
+            },
+        );
+
+        let (processed, total, remaining) = last.expect("progress should be reported");
+        assert_eq!(processed, 1);
+        assert_eq!(total, 41);
+        assert!(remaining <= 80);
+        assert!(puzzle.iter_indexed().filter(|c| c.is_solved()).count() <= 80);
+    }
+
+    #[test]
     fn random_clue_count_stop() {
         let mut rng = StdRng::seed_from_u64(7);
         let solution = make_solution(&mut rng);

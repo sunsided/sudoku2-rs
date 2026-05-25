@@ -694,6 +694,192 @@ mod tests {
     }
 
     #[test]
+    fn map_helpers_cover_all_variants() {
+        assert!(matches!(
+            map_variant(WasmVariant::Standard),
+            Variant::Standard
+        ));
+        assert!(matches!(
+            map_variant(WasmVariant::Hypersudoku),
+            Variant::Hypersudoku
+        ));
+        assert!(matches!(
+            map_variant(WasmVariant::Nonomino),
+            Variant::Nonomino
+        ));
+        assert_eq!(map_difficulty(WasmDifficulty::Easy), Difficulty::Easy);
+        assert_eq!(map_difficulty(WasmDifficulty::Medium), Difficulty::Medium);
+        assert_eq!(map_difficulty(WasmDifficulty::Hard), Difficulty::Hard);
+        assert_eq!(map_difficulty(WasmDifficulty::Expert), Difficulty::Expert);
+        assert_eq!(map_difficulty(WasmDifficulty::Extreme), Difficulty::Extreme);
+        assert!(matches!(map_symmetry(WasmSymmetry::None), Symmetry::None));
+        assert!(matches!(
+            map_symmetry(WasmSymmetry::Rotational),
+            Symmetry::Rotational180
+        ));
+        assert_eq!(difficulty_name(Difficulty::Easy), "easy");
+        assert_eq!(difficulty_name(Difficulty::Medium), "medium");
+        assert_eq!(difficulty_name(Difficulty::Hard), "hard");
+        assert_eq!(difficulty_name(Difficulty::Expert), "expert");
+        assert_eq!(difficulty_name(Difficulty::Extreme), "extreme");
+        assert_eq!(default_max_attempts(), 200);
+    }
+
+    #[test]
+    fn parse_state_auto_handles_grid_and_reports_errors() {
+        let game = example_games::sudoku::example_sudoku();
+        let grid = SudokuSerializer::format_grid(&game.initial_state);
+        let parsed = parse_state(&grid, PuzzleFormat::Auto).expect("grid should parse");
+        assert_eq!(
+            SudokuSerializer::format_line(&parsed),
+            SudokuSerializer::format_line(&game.initial_state)
+        );
+
+        let err = parse_state("123", PuzzleFormat::Line).expect_err("short line should fail");
+        assert!(err.contains("failed to parse puzzle"));
+    }
+
+    #[test]
+    fn build_groups_covers_hyper_and_region_errors() {
+        let hyper =
+            build_groups(WasmVariant::Hypersudoku, None).expect("hyper groups should build");
+        assert!(hyper.iter().count() > 27);
+
+        let short = build_nonomino_groups("ABC").expect_err("short layout should fail");
+        assert!(short.contains("expected 81"));
+
+        let bad_symbol = build_nonomino_groups(&format!("{}Z", "A".repeat(80)))
+            .expect_err("bad symbol should fail");
+        assert!(bad_symbol.contains("invalid region symbol"));
+    }
+
+    #[test]
+    fn solve_step_response_handles_solved_state() {
+        let game = example_games::sudoku::example_sudoku();
+        let solved = game.expected_solution.unwrap();
+        let solved_req = SolveRequest {
+            puzzle: SudokuSerializer::format_line(&solved),
+            variant: WasmVariant::Standard,
+            format: PuzzleFormat::Line,
+            region_line: None,
+        };
+        let solved_response = solve_step_impl(solved_req).expect("solved step should succeed");
+        assert!(!solved_response.changed);
+        assert!(solved_response.solved);
+    }
+
+    #[test]
+    fn generation_progress_serializes_clue_digging_details() {
+        let response = map_generation_progress(GenerationProgress::ClueDiggingProgress {
+            attempt: 2,
+            max_attempts: 5,
+            processed_steps: 7,
+            total_steps: 81,
+            remaining_clues: 42,
+        });
+
+        assert_eq!(response.event, "clue_digging");
+        assert_eq!(response.attempt, 2);
+        assert_eq!(response.max_attempts, 5);
+        assert_eq!(response.processed_steps, Some(7));
+        assert_eq!(response.total_steps, Some(81));
+        assert_eq!(response.remaining_clues, Some(42));
+        assert!(response.puzzle_line.is_none());
+    }
+
+    #[test]
+    fn generate_with_callback_reports_progress_to_wasm_caller() {
+        let req = GenerateRequest {
+            variant: WasmVariant::Standard,
+            target_difficulty: WasmDifficulty::Easy,
+            symmetry: WasmSymmetry::None,
+            max_attempts: 1,
+            seed: Some(42),
+        };
+        let mut events = Vec::new();
+        let response = generate_puzzle_with_callback_impl(req, |progress| {
+            events.push(progress.event);
+            Ok(())
+        })
+        .expect("generation should return a puzzle or closest puzzle");
+
+        assert_eq!(response.puzzle_line.len(), 81);
+        assert!(events.contains(&"attempt_started".to_string()));
+        assert!(events.contains(&"groups_ready".to_string()));
+        assert!(events.contains(&"solution_generated".to_string()));
+        assert!(events.contains(&"clue_digging".to_string()));
+        assert!(events.contains(&"puzzle_dug".to_string()));
+        assert!(events.contains(&"attempt_finished".to_string()));
+    }
+
+    #[test]
+    fn invalid_nonomino_region_layout_reports_group_size() {
+        let err = build_nonomino_groups(&"A".repeat(81)).expect_err("layout should fail");
+        assert!(err.contains("group A has 81 cells"));
+    }
+
+    #[test]
+    fn generation_progress_serializes_edge_variants() {
+        let game = example_games::sudoku::example_sudoku();
+        let puzzle = Puzzle {
+            state: game.initial_state.clone(),
+            solution: game.expected_solution.unwrap(),
+            groups: game.groups.clone(),
+            difficulty: Difficulty::Hard,
+        };
+
+        let attempt = map_generation_progress(GenerationProgress::AttemptStarted {
+            attempt: 1,
+            max_attempts: 3,
+        });
+        assert_eq!(attempt.event, "attempt_started");
+        assert_eq!(attempt.attempt, 1);
+
+        let failed = map_generation_progress(GenerationProgress::RegionGenerationFailed {
+            attempt: 2,
+            max_attempts: 3,
+        });
+        assert_eq!(failed.event, "region_generation_failed");
+
+        let closest = map_generation_progress(GenerationProgress::ClosestUpdated {
+            attempt: 3,
+            max_attempts: 3,
+            puzzle: &puzzle,
+        });
+        assert_eq!(closest.event, "closest_updated");
+        assert_eq!(closest.difficulty.as_deref(), Some("hard"));
+        assert_eq!(closest.target_met, Some(false));
+    }
+
+    #[test]
+    fn generate_impl_reports_closest_and_empty_failures() {
+        let closest_req = GenerateRequest {
+            variant: WasmVariant::Standard,
+            target_difficulty: WasmDifficulty::Medium,
+            symmetry: WasmSymmetry::None,
+            max_attempts: 1,
+            seed: Some(42),
+        };
+        let closest = generate_puzzle_impl(closest_req).expect("closest puzzle should be returned");
+        assert_eq!(closest.puzzle_line.len(), 81);
+        assert!(closest
+            .warning
+            .as_deref()
+            .unwrap_or_default()
+            .contains("target difficulty"));
+
+        let empty_req = GenerateRequest {
+            variant: WasmVariant::Standard,
+            target_difficulty: WasmDifficulty::Easy,
+            symmetry: WasmSymmetry::None,
+            max_attempts: 0,
+            seed: Some(42),
+        };
+        let err = generate_puzzle_impl(empty_req).expect_err("zero attempts should fail");
+        assert!(err.contains("without producing a puzzle"));
+    }
+
+    #[test]
     fn generate_standard_returns_puzzle() {
         let req = GenerateRequest {
             variant: WasmVariant::Standard,
