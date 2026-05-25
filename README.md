@@ -77,6 +77,27 @@ Build the web package:
 task wasm:build
 ```
 
+Build a multi-target npm package:
+
+```bash
+task npm:build
+```
+
+This assembles `pkg/npm` with separate `bundler`, `nodejs`, and `web` outputs plus a root
+`package.json` that exposes the bundler build for ESM-capable bundlers, the Node.js build for
+Node imports and CommonJS `require`, and explicit `./web`, `./bundler`, and `./nodejs`
+subpaths. Use `task npm:pack` to create a local tarball without publishing.
+
+Publishing is intentionally explicit and optional:
+
+```bash
+task npm:publish
+task npm:publish:github
+```
+
+For GitHub Packages, set `NPM_SCOPE` when building if the registry requires a scoped package name,
+for example `NPM_SCOPE=sunsided task npm:build`.
+
 Run the demo page:
 
 ```bash

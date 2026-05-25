@@ -114,6 +114,55 @@ tasks:
     cmds:
       - wasm-pack build --release --target web --features wasm
 
+  npm:build:
+    desc: Build a multi-target npm package into ./pkg/npm (requires wasm-pack and node)
+    vars:
+      NPM_SCOPE:
+        sh: test -n "${NPM_SCOPE:-}" && printf -- "--scope %s" "$NPM_SCOPE" || true
+    preconditions:
+      - sh: command -v wasm-pack >/dev/null 2>&1
+        msg: >-
+          wasm-pack is required for this task.
+          Install it from https://rustwasm.github.io/wasm-pack/installer/
+      - sh: command -v node >/dev/null 2>&1
+        msg: node is required to assemble the npm package metadata.
+    cmds:
+      - wasm-pack build --release --target bundler --out-dir pkg/npm/bundler {{.NPM_SCOPE}} . --features wasm
+      - wasm-pack build --release --target nodejs --out-dir pkg/npm/nodejs {{.NPM_SCOPE}} . --features wasm
+      - wasm-pack build --release --target web --out-dir pkg/npm/web {{.NPM_SCOPE}} . --features wasm
+      - node scripts/assemble-npm-package.mjs pkg/npm
+
+  npm:pack:
+    desc: Build and locally pack the npm package into ./pkg without publishing
+    deps:
+      - npm:build
+    preconditions:
+      - sh: command -v npm >/dev/null 2>&1
+        msg: npm is required to pack the generated package.
+    cmds:
+      - npm pack ./pkg/npm --pack-destination pkg
+
+  npm:publish:
+    desc: Explicitly publish ./pkg/npm to npmjs.org (requires npm auth)
+    deps:
+      - npm:build
+    preconditions:
+      - sh: command -v npm >/dev/null 2>&1
+        msg: npm is required to publish the generated package.
+    cmds:
+      - npm publish ./pkg/npm --access public
+
+  npm:publish:github:
+    desc: Explicitly publish ./pkg/npm to GitHub Packages (requires npm auth and NPM_SCOPE)
+    preconditions:
+      - sh: command -v npm >/dev/null 2>&1
+        msg: npm is required to publish the generated package.
+      - sh: test -n "${NPM_SCOPE:-}"
+        msg: NPM_SCOPE is required because GitHub Packages only accepts scoped npm packages.
+    cmds:
+      - task: npm:build
+      - npm publish ./pkg/npm --registry=https://npm.pkg.github.com
+
   wasm:demo:
     desc: Build WASM package and run a local demo web server on port 8000
     deps:
