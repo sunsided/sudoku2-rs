@@ -547,6 +547,72 @@ mod tests {
         assert_eq!(step.placed_cells, 1);
     }
 
+    fn no_logic_config() -> DefaultSolverConfig {
+        DefaultSolverConfig {
+            hidden_singles: false,
+            naked_twins: false,
+            hidden_twins: false,
+            naked_triples: false,
+            hidden_triples: false,
+            naked_quads: false,
+            hidden_quads: false,
+            h_pattern: false,
+            skyscraper: false,
+            xwings: false,
+            xy_wing: false,
+            w_wing: false,
+            unique_rectangle: false,
+        }
+    }
+
+    #[test]
+    fn solve_step_reports_candidate_only_change() {
+        let groups = CellGroups::default().with_default_rows_and_columns();
+        let state = GameState::new();
+        state.set_at_index(Index::new(0), Value::ONE);
+        let solver = DefaultSolver::new_with(&groups, &no_logic_config());
+
+        let step = solver
+            .solve_step(&state)
+            .expect("candidate-only step should be valid")
+            .expect("candidate-only step should be reported");
+
+        assert_eq!(step.strategy, "Naked singles");
+        assert_eq!(step.index, None);
+        assert_eq!(step.value, None);
+        assert_eq!(step.placed_cells, 0);
+        assert!(step.eliminated_candidates > 0);
+    }
+
+    #[test]
+    fn solve_step_guesses_when_no_strategy_can_advance() {
+        let groups = CellGroups::default().with_default_rows_and_columns();
+        let state = GameState::new();
+        let solver = DefaultSolver::new_with(&groups, &no_logic_config());
+
+        let step = solver
+            .solve_step(&state)
+            .expect("guess step should be valid")
+            .expect("guess step should be available");
+
+        assert_eq!(step.strategy, "Guess");
+        assert_eq!(step.index, Some(Index::new(0)));
+        assert!(step.value.is_some());
+        assert_eq!(step.placed_cells, 1);
+    }
+
+    #[test]
+    fn solve_step_rejects_impossible_state() {
+        let groups = CellGroups::default().with_default_rows_and_columns();
+        let state = GameState::new();
+        for value in Value::range() {
+            state.forget_at_index(Index::new(0), value);
+        }
+        let solver = DefaultSolver::new_with(&groups, &no_logic_config());
+
+        assert!(solver.solve_step(&state).is_err());
+    }
+
     #[test]
     fn solving_sudoku_works() {
         let game = crate::example_games::sudoku::example_sudoku();
