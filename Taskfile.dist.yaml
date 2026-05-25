@@ -104,6 +104,23 @@ tasks:
     cmds:
       - cargo run --release --example generate -- {{.CLI_ARGS}}
 
+  wasm:build:
+    desc: Build the WASM web package into ./pkg (requires wasm-pack)
+    preconditions:
+      - sh: command -v wasm-pack >/dev/null 2>&1
+        msg: >-
+          wasm-pack is required for this task.
+          Install it from https://rustwasm.github.io/wasm-pack/installer/
+    cmds:
+      - wasm-pack build --release --target web --features wasm
+
+  wasm:demo:
+    desc: Build WASM package and run a local demo web server on port 8000
+    deps:
+      - wasm:build
+    cmds:
+      - python3 -m http.server
+
   examples:
     desc: Run all examples
     aliases:

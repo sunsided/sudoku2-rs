@@ -362,7 +362,52 @@ impl IntoValueOptions for [u8; 81] {
 
 #[cfg(test)]
 mod tests {
+    use crate::value::IntoValueOptions;
     use crate::*;
+
+    #[test]
+    fn value_conversions_and_formatting() {
+        let seven = Value::new(std::num::NonZeroU8::new(7).unwrap());
+        assert_eq!(format!("{seven:?}"), "7");
+        assert_eq!(u8::from(seven), 7);
+        assert!(Value::try_from(0)
+            .unwrap_err()
+            .to_string()
+            .contains("conversion attempted"));
+        assert_eq!(
+            <Value as std::convert::TryFrom<u8>>::try_from(9).unwrap(),
+            Value::NINE
+        );
+        assert!(<Value as std::convert::TryFrom<u8>>::try_from(10).is_err());
+
+        let set = ValueBitSet::from([1u8, 3, 9].as_slice());
+        assert_eq!(format!("{set:?}"), "1 3 9");
+        assert!(set.contains(Value::ONE));
+        assert!(set.contains(Value::THREE));
+        assert!(set.contains(Value::NINE));
+
+        let optional_set =
+            ValueBitSet::from([Some(Value::TWO), None, Some(Value::FOUR)].as_slice());
+        assert_eq!(format!("{optional_set:?}"), "2 4");
+
+        let raw_values = [
+            1u8, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ];
+        let values: [ValueOption; 81] = IntoValueOptions::into(raw_values);
+        assert_eq!(values[0], Some(Value::ONE));
+        assert_eq!(values[1], None);
+        assert_eq!(values[16], Some(Value::NINE));
+    }
+
+    #[test]
+    #[should_panic(expected = "An invalid value was specified")]
+    fn value_options_reject_out_of_range_values() {
+        let mut raw = [0u8; 81];
+        raw[0] = 10;
+        let _: [ValueOption; 81] = IntoValueOptions::into(raw);
+    }
 
     #[test]
     fn with_value() {

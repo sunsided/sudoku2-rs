@@ -41,6 +41,13 @@ pub struct ClueDigger {
     target_difficulty: Option<Difficulty>,
 }
 
+/// Progress emitted while removing clues from a completed grid.
+pub struct ClueDiggingProgress {
+    pub processed_steps: usize,
+    pub total_steps: usize,
+    pub remaining_clues: usize,
+}
+
 impl ClueDigger {
     pub fn new(groups: &CellGroups) -> Self {
         // Advanced strategies (HiddenSingles, etc.) assume the state is
@@ -95,6 +102,42 @@ impl ClueDigger {
         stop: StoppingCondition,
         rng: &mut R,
     ) -> GameState {
+        self.dig_with_callback(solution, strategy, stop, rng, |_| {})
+    }
+
+    pub fn dig_with_callback<R, F>(
+        &self,
+        solution: &GameState,
+        strategy: RemovalStrategy,
+        stop: StoppingCondition,
+        rng: &mut R,
+        mut on_progress: F,
+    ) -> GameState
+    where
+        R: Rng,
+        F: FnMut(ClueDiggingProgress),
+    {
+        match self.try_dig_with_callback(solution, strategy, stop, rng, |progress| {
+            on_progress(progress);
+            Ok::<(), std::convert::Infallible>(())
+        }) {
+            Ok(state) => state,
+            Err(err) => match err {},
+        }
+    }
+
+    pub fn try_dig_with_callback<R, F, E>(
+        &self,
+        solution: &GameState,
+        strategy: RemovalStrategy,
+        stop: StoppingCondition,
+        rng: &mut R,
+        mut on_progress: F,
+    ) -> Result<GameState, E>
+    where
+        R: Rng,
+        F: FnMut(ClueDiggingProgress) -> Result<(), E>,
+    {
         debug_assert!(
             solution.iter_indexed().all(|c| c.is_solved()),
             "solution must be a fully solved grid"
@@ -107,83 +150,103 @@ impl ClueDigger {
         }
 
         match strategy {
-            RemovalStrategy::Random => self.dig_random(&mut clues, &stop, rng, solution),
-            RemovalStrategy::Symmetric => self.dig_symmetric(&mut clues, &stop, rng, solution),
+            RemovalStrategy::Random => {
+                self.dig_random(&mut clues, &stop, rng, solution, &mut on_progress)?;
+            }
+            RemovalStrategy::Symmetric => {
+                self.dig_symmetric(&mut clues, &stop, rng, solution, &mut on_progress)?;
+            }
         }
 
-        Self::state_from_clues(&clues)
+        Ok(Self::state_from_clues(&clues))
     }
 
-    fn dig_random<R: Rng>(
+    fn dig_random<R: Rng, F, E>(
         &self,
         clues: &mut [Option<Value>; 81],
         stop: &StoppingCondition,
         rng: &mut R,
         solution: &GameState,
-    ) {
+        on_progress: &mut F,
+    ) -> Result<(), E>
+    where
+        F: FnMut(ClueDiggingProgress) -> Result<(), E>,
+    {
         let mut order: Vec<usize> = (0..81).collect();
         order.shuffle(rng);
 
-        for idx in order {
-            if clues[idx].is_none() {
-                continue;
+        let total_steps = order.len();
+        for (processed, idx) in order.into_iter().enumerate() {
+            if clues[idx].is_some() && !self.should_stop(clues, stop) {
+                let saved = clues[idx].take();
+                let state = Self::state_from_clues(clues);
+                if !self.solver.is_unique_with_hint(&state, solution) {
+                    clues[idx] = saved;
+                } else if let Some(target) = self.target_difficulty {
+                    if estimate_difficulty(&state, &self.groups) > target {
+                        clues[idx] = saved;
+                    }
+                }
             }
+            on_progress(ClueDiggingProgress {
+                processed_steps: processed + 1,
+                total_steps,
+                remaining_clues: clue_count(clues),
+            })?;
             if self.should_stop(clues, stop) {
                 break;
             }
-            let saved = clues[idx].take();
-            let state = Self::state_from_clues(clues);
-            if !self.solver.is_unique_with_hint(&state, solution) {
-                clues[idx] = saved;
-                continue;
-            }
-            if let Some(target) = self.target_difficulty {
-                if estimate_difficulty(&state, &self.groups) > target {
-                    clues[idx] = saved;
-                }
-            }
         }
+        Ok(())
     }
 
-    fn dig_symmetric<R: Rng>(
+    fn dig_symmetric<R: Rng, F, E>(
         &self,
         clues: &mut [Option<Value>; 81],
         stop: &StoppingCondition,
         rng: &mut R,
         solution: &GameState,
-    ) {
+        on_progress: &mut F,
+    ) -> Result<(), E>
+    where
+        F: FnMut(ClueDiggingProgress) -> Result<(), E>,
+    {
         // Build pairs (i, 80-i). Index 40 maps to itself (center cell).
         let mut pairs: Vec<(usize, usize)> = (0..40).map(|i| (i, 80 - i)).collect();
         pairs.push((40, 40));
         pairs.shuffle(rng);
 
-        for (a, b) in pairs {
-            if clues[a].is_none() && clues[b].is_none() {
-                continue;
-            }
-            if self.should_stop(clues, stop) {
-                break;
-            }
-            let saved_a = clues[a].take();
-            let saved_b = if a != b { clues[b].take() } else { None };
+        let total_steps = pairs.len();
+        for (processed, (a, b)) in pairs.into_iter().enumerate() {
+            if (clues[a].is_some() || clues[b].is_some()) && !self.should_stop(clues, stop) {
+                let saved_a = clues[a].take();
+                let saved_b = if a != b { clues[b].take() } else { None };
 
-            let state = Self::state_from_clues(clues);
-            if !self.solver.is_unique_with_hint(&state, solution) {
-                clues[a] = saved_a;
-                if a != b {
-                    clues[b] = saved_b;
-                }
-                continue;
-            }
-            if let Some(target) = self.target_difficulty {
-                if estimate_difficulty(&state, &self.groups) > target {
+                let state = Self::state_from_clues(clues);
+                if !self.solver.is_unique_with_hint(&state, solution) {
                     clues[a] = saved_a;
                     if a != b {
                         clues[b] = saved_b;
                     }
+                } else if let Some(target) = self.target_difficulty {
+                    if estimate_difficulty(&state, &self.groups) > target {
+                        clues[a] = saved_a;
+                        if a != b {
+                            clues[b] = saved_b;
+                        }
+                    }
                 }
             }
+            on_progress(ClueDiggingProgress {
+                processed_steps: processed + 1,
+                total_steps,
+                remaining_clues: clue_count(clues),
+            })?;
+            if self.should_stop(clues, stop) {
+                break;
+            }
         }
+        Ok(())
     }
 
     fn should_stop(&self, clues: &[Option<Value>; 81], stop: &StoppingCondition) -> bool {
@@ -240,6 +303,60 @@ mod tests {
 
         let solver = DefaultSolver::new(&standard_groups());
         assert!(solver.is_unique(&puzzle));
+    }
+
+    #[test]
+    fn random_dig_reports_progress() {
+        let mut rng = StdRng::seed_from_u64(700);
+        let solution = make_solution(&mut rng);
+        let digger = ClueDigger::new(&standard_groups());
+        let mut progress = Vec::new();
+        let puzzle = digger.dig_with_callback(
+            &solution,
+            RemovalStrategy::Random,
+            StoppingCondition::ClueCount(80),
+            &mut rng,
+            |event| {
+                progress.push((
+                    event.processed_steps,
+                    event.total_steps,
+                    event.remaining_clues,
+                ))
+            },
+        );
+
+        assert!(!progress.is_empty());
+        assert_eq!(progress[0].0, 1);
+        assert_eq!(progress[0].1, 81);
+        assert!(progress[0].2 <= 80);
+        assert!(puzzle.iter_indexed().filter(|c| c.is_solved()).count() <= 80);
+    }
+
+    #[test]
+    fn symmetric_dig_reports_pair_progress() {
+        let mut rng = StdRng::seed_from_u64(701);
+        let solution = make_solution(&mut rng);
+        let digger = ClueDigger::new(&standard_groups());
+        let mut last = None;
+        let puzzle = digger.dig_with_callback(
+            &solution,
+            RemovalStrategy::Symmetric,
+            StoppingCondition::ClueCount(80),
+            &mut rng,
+            |event| {
+                last = Some((
+                    event.processed_steps,
+                    event.total_steps,
+                    event.remaining_clues,
+                ))
+            },
+        );
+
+        let (processed, total, remaining) = last.expect("progress should be reported");
+        assert_eq!(processed, 1);
+        assert_eq!(total, 41);
+        assert!(remaining <= 80);
+        assert!(puzzle.iter_indexed().filter(|c| c.is_solved()).count() <= 80);
     }
 
     #[test]

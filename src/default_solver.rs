@@ -8,6 +8,7 @@ use crate::strategies::{
     NakedTriples, NakedTwins, Skyscraper, Strategy, StrategyResult, UniqueRectangle, WWing, XWing,
     XYWing,
 };
+use crate::value::Value;
 use crate::GameState;
 use log::{debug, trace};
 
@@ -22,6 +23,17 @@ pub struct DefaultSolver {
 #[derive(Debug, thiserror::Error)]
 #[error("The game is unsolvable")]
 pub struct Unsolvable(pub GameState);
+
+#[derive(Debug, Clone)]
+pub struct SolverStep {
+    pub state: GameState,
+    pub strategy: String,
+    pub index: Option<Index>,
+    pub value: Option<Value>,
+    pub placed_cells: usize,
+    pub eliminated_candidates: usize,
+    pub solved: bool,
+}
 
 pub struct DefaultSolverConfig {
     pub hidden_singles: bool,
@@ -306,6 +318,89 @@ impl DefaultSolver {
         count
     }
 
+    /// Applies one solving step and reports the strategy responsible for it.
+    pub fn solve_step<S: AsRef<GameState>>(
+        &self,
+        state: S,
+    ) -> Result<Option<SolverStep>, InvalidGameState> {
+        let state = state.as_ref().clone();
+        if state.is_solved(&self.groups) {
+            return Ok(None);
+        }
+        if !state.is_consistent(&self.groups) {
+            return Err(InvalidGameState {});
+        }
+
+        let stats = BoardStatsCache::new(&state);
+        let mut last_candidate_step = None;
+
+        'solving: loop {
+            for strategy in self.strategies.iter().filter(|&s| s.is_enabled()) {
+                let before = state.clone();
+                let outcome = strategy.apply(&state, &self.groups, &stats)?;
+                if matches!(outcome, StrategyResult::AppliedChange) {
+                    stats.invalidate();
+                    let (index, value, placed_cells, eliminated_candidates) =
+                        describe_state_change(&before, &state);
+                    let step = SolverStep {
+                        solved: state.is_solved(&self.groups),
+                        state: state.clone(),
+                        strategy: format!("{strategy:?}"),
+                        index,
+                        value,
+                        placed_cells,
+                        eliminated_candidates,
+                    };
+
+                    if let (Some(index), Some(value)) = (index, value) {
+                        let single_step_state = before.clone();
+                        single_step_state.place_and_propagate_at_index(index, value, &self.groups);
+                        let (_, _, _, eliminated_candidates) =
+                            describe_state_change(&before, &single_step_state);
+                        return Ok(Some(SolverStep {
+                            solved: single_step_state.is_solved(&self.groups),
+                            state: single_step_state,
+                            strategy: step.strategy,
+                            index: Some(index),
+                            value: Some(value),
+                            placed_cells: 1,
+                            eliminated_candidates,
+                        }));
+                    }
+
+                    last_candidate_step = Some(step);
+                    continue 'solving;
+                }
+            }
+            break;
+        }
+
+        if let Some(step) = last_candidate_step {
+            return Ok(Some(step));
+        }
+
+        if !state.is_consistent(&self.groups) {
+            return Err(InvalidGameState {});
+        }
+
+        let Some(index) = self.pick_index_to_fork_from(&state) else {
+            return Ok(None);
+        };
+        let Some(value) = state.get_at_index(index).iter_candidates().next() else {
+            return Ok(None);
+        };
+        state.place_and_propagate_at_index(index, value, &self.groups);
+        Ok(Some(SolverStep {
+            solved: state.is_solved(&self.groups),
+            state,
+            strategy: "Guess".to_string(),
+            index: Some(index),
+            value: Some(value),
+            placed_cells: 1,
+            eliminated_candidates: 0,
+        }))
+    }
+
     /// Applies different strategies for solving the board without branching.
     fn apply_strategies(&self, state: &GameState) -> Result<(), InvalidGameState> {
         // Lazy cache for board-wide stats. The first heavy strategy that
@@ -391,9 +486,137 @@ impl DefaultSolver {
     }
 }
 
+fn describe_state_change(
+    before: &GameState,
+    after: &GameState,
+) -> (Option<Index>, Option<Value>, usize, usize) {
+    let mut first_placed = None;
+    let mut placed_cells = 0usize;
+    let mut eliminated_candidates = 0usize;
+
+    for index in Index::range() {
+        let before_cell = before.get_at_index(index);
+        let after_cell = after.get_at_index(index);
+        if before_cell == after_cell {
+            continue;
+        }
+
+        if !before_cell.is_solved() && after_cell.is_solved() {
+            placed_cells += 1;
+            if first_placed.is_none() {
+                first_placed = after_cell
+                    .iter_candidates()
+                    .next()
+                    .map(|value| (index, value));
+            }
+        }
+
+        for value in before_cell.iter_candidates() {
+            if !after_cell.contains(value) {
+                eliminated_candidates += 1;
+            }
+        }
+    }
+
+    match first_placed {
+        Some((index, value)) => (
+            Some(index),
+            Some(value),
+            placed_cells,
+            eliminated_candidates,
+        ),
+        None => (None, None, placed_cells, eliminated_candidates),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn solve_step_returns_single_visible_placement() {
+        let game = crate::example_games::sudoku::example_sudoku();
+        let solver = DefaultSolver::new(&game);
+        let step = solver
+            .solve_step(&game.initial_state)
+            .expect("step should be valid")
+            .expect("step should be available");
+
+        let added_values = Index::range()
+            .filter(|&index| {
+                !game.initial_state.get_at_index(index).is_solved()
+                    && step.state.get_at_index(index).is_solved()
+            })
+            .count();
+        assert_eq!(added_values, 1);
+        assert_eq!(step.placed_cells, 1);
+    }
+
+    fn no_logic_config() -> DefaultSolverConfig {
+        DefaultSolverConfig {
+            hidden_singles: false,
+            naked_twins: false,
+            hidden_twins: false,
+            naked_triples: false,
+            hidden_triples: false,
+            naked_quads: false,
+            hidden_quads: false,
+            h_pattern: false,
+            skyscraper: false,
+            xwings: false,
+            xy_wing: false,
+            w_wing: false,
+            unique_rectangle: false,
+        }
+    }
+
+    #[test]
+    fn solve_step_reports_candidate_only_change() {
+        let groups = CellGroups::default().with_default_rows_and_columns();
+        let state = GameState::new();
+        state.set_at_index(Index::new(0), Value::ONE);
+        let solver = DefaultSolver::new_with(&groups, &no_logic_config());
+
+        let step = solver
+            .solve_step(&state)
+            .expect("candidate-only step should be valid")
+            .expect("candidate-only step should be reported");
+
+        assert_eq!(step.strategy, "Naked singles");
+        assert_eq!(step.index, None);
+        assert_eq!(step.value, None);
+        assert_eq!(step.placed_cells, 0);
+        assert!(step.eliminated_candidates > 0);
+    }
+
+    #[test]
+    fn solve_step_guesses_when_no_strategy_can_advance() {
+        let groups = CellGroups::default().with_default_rows_and_columns();
+        let state = GameState::new();
+        let solver = DefaultSolver::new_with(&groups, &no_logic_config());
+
+        let step = solver
+            .solve_step(&state)
+            .expect("guess step should be valid")
+            .expect("guess step should be available");
+
+        assert_eq!(step.strategy, "Guess");
+        assert_eq!(step.index, Some(Index::new(0)));
+        assert!(step.value.is_some());
+        assert_eq!(step.placed_cells, 1);
+    }
+
+    #[test]
+    fn solve_step_rejects_impossible_state() {
+        let groups = CellGroups::default().with_default_rows_and_columns();
+        let state = GameState::new();
+        for value in Value::range() {
+            state.forget_at_index(Index::new(0), value);
+        }
+        let solver = DefaultSolver::new_with(&groups, &no_logic_config());
+
+        assert!(solver.solve_step(&state).is_err());
+    }
 
     #[test]
     fn solving_sudoku_works() {

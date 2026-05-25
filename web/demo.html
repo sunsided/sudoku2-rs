@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>sudoku2 WASM demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1.5rem; line-height: 1.4; }
+    textarea, select, input, button { width: 100%; margin: 0.3rem 0 0.8rem; }
+    textarea { min-height: 7rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    pre { background: #111; color: #eee; padding: 0.8rem; border-radius: 6px; overflow-x: auto; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; }
+    .button-row { display: flex; gap: 0.6rem; }
+    .button-row button { margin: 0.3rem 0 0.8rem; }
+    .status { min-height: 1.4rem; font-weight: 600; }
+    progress { width: 100%; height: 0.8rem; margin: 0.2rem 0 0.8rem; }
+    progress[hidden] { display: none; }
+    .board-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; margin: 0.5rem 0 0.8rem; }
+    .board-wrap h3 { margin: 0 0 0.35rem; font-size: 0.95rem; }
+    .sudoku-board { display: grid; grid-template-columns: repeat(9, 1fr); width: min(100%, 22rem); aspect-ratio: 1; border: 2px solid #222; background: #222; gap: 1px; }
+    .sudoku-cell { display: grid; place-items: center; min-width: 0; font-size: clamp(0.75rem, 2.2vw, 1.15rem); background: #fff; position: relative; }
+    .sudoku-cell.empty { color: #aaa; }
+    .sudoku-cell.highlight { background: #fff3b0; font-weight: 700; }
+    .sudoku-cell:nth-child(3n) { border-right: 2px solid #222; }
+    .sudoku-cell:nth-child(9n) { border-right: 0; }
+    .sudoku-cell:nth-child(n+19):nth-child(-n+27), .sudoku-cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid #222; }
+    .region-A { background: #f6d6d6; } .region-B { background: #d8ead3; } .region-C { background: #d7e3fc; }
+    .region-D { background: #fff2cc; } .region-E { background: #eadcf8; } .region-F { background: #d0e9e6; }
+    .region-G { background: #fce5cd; } .region-H { background: #ddebf7; } .region-I { background: #e2f0d9; }
+    @media (max-width: 900px) { .grid, .board-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<h1>sudoku2 WASM integration demo</h1>
+
+<div class="grid">
+  <section class="card">
+    <h2>Solve puzzle</h2>
+    <label for="solve-variant">Variant</label>
+    <select id="solve-variant">
+      <option value="standard">standard</option>
+      <option value="hypersudoku">hypersudoku</option>
+      <option value="nonomino">nonomino</option>
+    </select>
+
+    <label for="solve-format">Puzzle format</label>
+    <select id="solve-format">
+      <option value="auto">auto</option>
+      <option value="line">line</option>
+      <option value="grid">grid</option>
+    </select>
+
+    <label for="solve-puzzle">Puzzle input (line or grid)</label>
+    <textarea id="solve-puzzle"></textarea>
+
+    <label for="solve-region">Nonomino region line (A-I, optional unless variant=nonomino)</label>
+    <textarea id="solve-region"></textarea>
+
+    <div class="button-row">
+      <button id="solve-button">Solve</button>
+      <button id="solve-step-button">Step</button>
+      <button id="solve-clear-solution-button">Clear solution</button>
+      <button id="solve-reset-button">Reset</button>
+    </div>
+    <div id="solve-status" class="status"></div>
+    <div class="board-row">
+      <div class="board-wrap">
+        <h3>Current</h3>
+        <div id="solve-board" class="sudoku-board"></div>
+      </div>
+      <div class="board-wrap">
+        <h3>Solution</h3>
+        <div id="solve-solution-board" class="sudoku-board"></div>
+      </div>
+    </div>
+    <pre id="solve-output"></pre>
+  </section>
+
+  <section class="card">
+    <h2>Generate puzzle</h2>
+    <label for="gen-variant">Variant</label>
+    <select id="gen-variant">
+      <option value="standard">standard</option>
+      <option value="hypersudoku">hypersudoku</option>
+      <option value="nonomino">nonomino</option>
+    </select>
+
+    <label for="gen-difficulty">Target difficulty</label>
+    <select id="gen-difficulty">
+      <option value="easy">easy</option>
+      <option value="medium" selected>medium</option>
+      <option value="hard">hard</option>
+      <option value="expert">expert</option>
+      <option value="extreme">extreme</option>
+    </select>
+
+    <label for="gen-symmetry">Symmetry</label>
+    <select id="gen-symmetry">
+      <option value="none" selected>none</option>
+      <option value="rotational">rotational</option>
+    </select>
+
+    <label for="gen-attempts">Max attempts</label>
+    <input id="gen-attempts" type="number" min="1" value="200" />
+
+    <label for="gen-seed">Seed (optional)</label>
+    <input id="gen-seed" type="number" />
+
+    <div class="button-row">
+      <button id="generate-button">Generate</button>
+      <button id="send-to-solver-button">Send to solver</button>
+    </div>
+    <div id="generate-status" class="status"></div>
+    <progress id="generate-progress" value="0" max="1" hidden></progress>
+    <div class="board-row">
+      <div class="board-wrap">
+        <h3>Puzzle</h3>
+        <div id="generate-board" class="sudoku-board"></div>
+      </div>
+      <div class="board-wrap">
+        <h3>Solution</h3>
+        <div id="generate-solution-board" class="sudoku-board"></div>
+      </div>
+    </div>
+    <pre id="generate-output"></pre>
+  </section>
+</div>
+
+<script type="module" src="./demo.js"></script>
+</body>
+</html>

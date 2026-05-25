@@ -104,6 +104,10 @@ fn main() {
             eprintln!("Failed: no valid puzzle produced in {attempts} attempts.");
             std::process::exit(1);
         }
+        Err(GenerationError::ProgressCallbackFailed) => {
+            eprintln!("Failed: progress callback aborted generation.");
+            std::process::exit(1);
+        }
     }
 }
 

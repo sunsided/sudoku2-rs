@@ -4,7 +4,16 @@ description = "Sudoku solving for fun and zero profit"
 version = "0.1.0"
 edition = "2021"
 authors = ["Markus Mayer"]
+repository = "https://github.com/sunsided/sudoku2-rs"
 license = "EUPL-1.2"
+keywords = ["sudoku", "solver", "puzzle", "generator", "wasm"]
+categories = ["algorithms", "games", "wasm"]
+
+[profile.release]
+lto = "fat"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 [[example]]
 name = "solver"
@@ -21,12 +30,24 @@ harness = false
 [features]
 default = ["smallvec"]
 smallvec = ["dep:smallvec"]
+wasm = [
+    "dep:getrandom",
+    "dep:js-sys",
+    "dep:serde",
+    "dep:serde-wasm-bindgen",
+    "dep:wasm-bindgen",
+]
 
 [dependencies]
+getrandom = { version = "0.4.2", optional = true, features = ["wasm_js"] }
+js-sys = { version = "0.3.82", optional = true }
 log = "0.4.29"
 rand = "0.10.1"
+serde = { version = "1.0.228", features = ["derive"], optional = true }
+serde-wasm-bindgen = { version = "0.6.5", optional = true }
 smallvec = { version = "1.15.1", features = ["union"], optional = true }
 thiserror = "2.0.18"
+wasm-bindgen = { version = "0.2.105", optional = true }
 
 [dev-dependencies]
 clap = "4.6.1"
